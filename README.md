@@ -44,6 +44,52 @@ pdtodo/
 - Rust 1.70+ (for desktop app and API)
 - Docker (for local development)
 
+#### Installing Prerequisites
+
+**Node.js 18+**
+- Download from [nodejs.org](https://nodejs.org/) or use a version manager:
+  ```bash
+  # Using nvm (Linux/macOS)
+  nvm install 18
+  nvm use 18
+
+  # Using nvm-windows (Windows)
+  nvm install 18
+  nvm use 18
+  ```
+
+**pnpm 8+**
+```bash
+# Using npm
+npm install -g pnpm
+
+# Or using Corepack (recommended, bundled with Node.js 16.13+)
+corepack enable
+corepack prepare pnpm@latest --activate
+```
+
+**Rust 1.70+**
+- Install via [rustup](https://rustup.rs/):
+  ```bash
+  # Linux/macOS
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+  # Windows: Download and run rustup-init.exe from https://rustup.rs/
+  ```
+- After installation, ensure Rust is in your PATH and verify:
+  ```bash
+  rustc --version
+  cargo --version
+  ```
+
+**Docker**
+- Download and install [Docker Desktop](https://www.docker.com/products/docker-desktop/) for your OS
+- Verify installation:
+  ```bash
+  docker --version
+  docker-compose --version
+  ```
+
 ### Installation
 
 ```bash
