@@ -43,7 +43,10 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(done)",
-      "Bash(git check-ignore:*)"
+      "Bash(git check-ignore:*)",
+      "Bash(git -C \"C:\\Users\\PaoloDona\\prj\\Other\\pdtd\" log --oneline -10)",
+      "Bash(git -C:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
