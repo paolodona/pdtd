@@ -44,9 +44,5 @@
       "timestampUrl": ""
     }
   },
-  "plugins": {
-    "store": {
-      "path": "pdtodo.store.json"
-    }
-  }
+  "plugins": {}
 }
