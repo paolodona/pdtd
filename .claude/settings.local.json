@@ -46,7 +46,12 @@
       "Bash(git check-ignore:*)",
       "Bash(git -C \"C:\\Users\\PaoloDona\\prj\\Other\\pdtd\" log --oneline -10)",
       "Bash(git -C:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(pnpm install)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm build:*)",
+      "Bash(npx vite build)",
+      "Bash(pnpm tauri dev:*)"
     ],
     "deny": [],
     "ask": []

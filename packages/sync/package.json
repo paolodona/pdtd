@@ -10,7 +10,8 @@
   "dependencies": {
     "yjs": "^13.6.10",
     "y-prosemirror": "^1.2.5",
-    "lib0": "^0.2.88"
+    "lib0": "^0.2.88",
+    "prosemirror-model": "^1.19.4"
   },
   "devDependencies": {
     "typescript": "^5.3.3"

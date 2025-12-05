@@ -1,8 +1,20 @@
-import { Component, onMount, onCleanup, createEffect, createSignal } from 'solid-js';
+import { Component, onMount, onCleanup, createEffect, createSignal, Accessor } from 'solid-js';
 import { Editor as TipTapEditor } from '@tiptap/core';
+import Collaboration from '@tiptap/extension-collaboration';
 import { getEditorExtensions, editorStyles } from '@pdtodo/editor';
 import { notesStore, updateNoteTitle } from '../stores/notesStore';
+import { invoke } from '@tauri-apps/api/core';
+import * as Y from 'yjs';
+import type { Note } from '@pdtodo/types';
 import './Editor.css';
+
+// Import extension types to augment ChainedCommands
+import '@tiptap/extension-bold';
+import '@tiptap/extension-underline';
+import '@tiptap/extension-heading';
+import '@tiptap/extension-bullet-list';
+import '@tiptap/extension-ordered-list';
+import '@tiptap/extension-task-list';
 
 interface EditorProps {
   noteId: string;
@@ -11,10 +23,18 @@ interface EditorProps {
 export const Editor: Component<EditorProps> = (props) => {
   let editorRef: HTMLDivElement | undefined;
   let titleRef: HTMLInputElement | undefined;
-  let editor: TipTapEditor | undefined;
+  let ydoc: Y.Doc | undefined;
+  let updateHandler: (() => void) | undefined;
+
+  // Use a signal for editor so toolbar can react to it
+  const [editor, setEditor] = createSignal<TipTapEditor | undefined>(undefined);
 
   const [title, setTitle] = createSignal('');
   const [isSaving, setIsSaving] = createSignal(false);
+  const [isLoading, setIsLoading] = createSignal(false);
+
+  // Track current note to prevent stale saves
+  let currentNoteId: string | null = null;
 
   // Inject editor styles
   onMount(() => {
@@ -27,24 +47,139 @@ export const Editor: Component<EditorProps> = (props) => {
     }
   });
 
-  // Initialize editor
-  onMount(() => {
+  // Debounce timeout for saving
+  let saveTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  // Save content to backend
+  const saveContent = async (noteId: string, doc: Y.Doc) => {
+    if (!noteId || noteId !== currentNoteId) return;
+
+    setIsSaving(true);
+    try {
+      const content = Y.encodeStateAsUpdate(doc);
+      await invoke('update_note_content', {
+        noteId,
+        content: Array.from(content),
+      });
+    } catch (error) {
+      console.error('Failed to save note content:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle content change with debouncing
+  const handleContentChange = (noteId: string, doc: Y.Doc) => {
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    saveTimeout = setTimeout(() => {
+      saveContent(noteId, doc);
+    }, 1000);
+  };
+
+  // Create and initialize editor with Yjs document
+  const initializeEditor = (doc: Y.Doc) => {
     if (!editorRef) return;
 
-    editor = new TipTapEditor({
+    // Destroy existing editor if any
+    const currentEditor = editor();
+    if (currentEditor) {
+      currentEditor.destroy();
+    }
+
+    // Remove History extension from base extensions (Yjs handles undo/redo)
+    const baseExtensions = getEditorExtensions({ placeholder: 'Start writing...' })
+      .filter((ext: { name: string }) => ext.name !== 'history');
+
+    const newEditor = new TipTapEditor({
       element: editorRef,
-      extensions: getEditorExtensions({ placeholder: 'Start writing...' }),
-      content: '<p></p>',
+      extensions: [
+        ...baseExtensions,
+        Collaboration.configure({
+          document: doc,
+          field: 'content',
+        }),
+      ],
       editorProps: {
         attributes: {
           class: 'editor-content',
         },
       },
-      onUpdate: ({ editor }) => {
-        // Auto-save on change (debounced)
-        handleContentChange();
-      },
     });
+
+    setEditor(newEditor);
+  };
+
+  // Load note content and initialize editor when noteId changes
+  createEffect(async () => {
+    const noteId = props.noteId;
+    if (!noteId || !editorRef) return;
+
+    // Save pending changes from previous note immediately before switching
+    const previousNoteId = currentNoteId;
+    const previousDoc = ydoc;
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+      saveTimeout = undefined;
+    }
+    if (previousNoteId && previousDoc) {
+      // Save synchronously before proceeding
+      try {
+        const content = Y.encodeStateAsUpdate(previousDoc);
+        await invoke('update_note_content', {
+          noteId: previousNoteId,
+          content: Array.from(content),
+        });
+      } catch (error) {
+        console.error('Failed to save previous note:', error);
+      }
+    }
+
+    // Update tracking
+    currentNoteId = noteId;
+    setIsLoading(true);
+
+    // Remove previous update handler
+    if (previousDoc && updateHandler) {
+      previousDoc.off('update', updateHandler);
+    }
+
+    try {
+      // Fetch note with content from backend
+      const note = await invoke<Note>('get_note', { noteId });
+
+      // Only proceed if this is still the current note
+      if (noteId !== currentNoteId) return;
+
+      // Create new Yjs document
+      ydoc = new Y.Doc();
+
+      // Apply stored content if any
+      if (note.content && note.content.length > 0) {
+        const contentArray = note.content instanceof Uint8Array
+          ? note.content
+          : new Uint8Array(note.content as number[]);
+        Y.applyUpdate(ydoc, contentArray);
+      }
+
+      // Initialize editor with the Yjs document
+      initializeEditor(ydoc);
+
+      // Set up update handler for auto-save
+      updateHandler = () => {
+        handleContentChange(noteId, ydoc!);
+      };
+      ydoc.on('update', updateHandler);
+
+    } catch (error) {
+      console.error('Failed to load note:', error);
+      // Initialize with empty document on error
+      ydoc = new Y.Doc();
+      initializeEditor(ydoc);
+    } finally {
+      setIsLoading(false);
+    }
   });
 
   // Update title when note changes
@@ -55,28 +190,16 @@ export const Editor: Component<EditorProps> = (props) => {
     }
   });
 
-  // Handle content change with debouncing
-  let saveTimeout: ReturnType<typeof setTimeout> | undefined;
-  const handleContentChange = () => {
-    setIsSaving(true);
-    if (saveTimeout) {
-      clearTimeout(saveTimeout);
-    }
-    saveTimeout = setTimeout(() => {
-      // Save content here (via Tauri command or sync)
-      setIsSaving(false);
-    }, 1000);
-  };
-
   // Handle title change
+  let titleTimeout: ReturnType<typeof setTimeout> | undefined;
   const handleTitleChange = (e: InputEvent) => {
     const newTitle = (e.target as HTMLInputElement).value;
     setTitle(newTitle);
 
-    if (saveTimeout) {
-      clearTimeout(saveTimeout);
+    if (titleTimeout) {
+      clearTimeout(titleTimeout);
     }
-    saveTimeout = setTimeout(() => {
+    titleTimeout = setTimeout(() => {
       updateNoteTitle(props.noteId, newTitle);
     }, 500);
   };
@@ -85,15 +208,37 @@ export const Editor: Component<EditorProps> = (props) => {
   const handleTitleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      editor?.commands.focus('start');
+      editor()?.commands.focus('start');
     }
   };
 
-  // Cleanup
-  onCleanup(() => {
-    editor?.destroy();
+  // Cleanup - save content before destroying
+  onCleanup(async () => {
+    // Cancel pending saves and save immediately
     if (saveTimeout) {
       clearTimeout(saveTimeout);
+    }
+    if (currentNoteId && ydoc) {
+      try {
+        const content = Y.encodeStateAsUpdate(ydoc);
+        await invoke('update_note_content', {
+          noteId: currentNoteId,
+          content: Array.from(content),
+        });
+      } catch (error) {
+        console.error('Failed to save note on cleanup:', error);
+      }
+    }
+
+    const currentEditor = editor();
+    if (currentEditor) {
+      currentEditor.destroy();
+    }
+    if (ydoc && updateHandler) {
+      ydoc.off('update', updateHandler);
+    }
+    if (titleTimeout) {
+      clearTimeout(titleTimeout);
     }
   });
 
@@ -110,6 +255,7 @@ export const Editor: Component<EditorProps> = (props) => {
           placeholder="Note title"
         />
         <div class="editor-status">
+          {isLoading() && <span class="loading-indicator">Loading...</span>}
           {isSaving() && <span class="saving-indicator">Saving...</span>}
         </div>
       </div>
@@ -122,17 +268,22 @@ export const Editor: Component<EditorProps> = (props) => {
 };
 
 interface EditorToolbarProps {
-  editor: TipTapEditor | undefined;
+  editor: Accessor<TipTapEditor | undefined>;
 }
 
 const EditorToolbar: Component<EditorToolbarProps> = (props) => {
+  const getEditor = () => props.editor();
+
   const isActive = (name: string, attrs?: Record<string, unknown>) => {
-    return props.editor?.isActive(name, attrs) ?? false;
+    return getEditor()?.isActive(name, attrs) ?? false;
   };
 
-  const runCommand = (command: () => boolean) => {
-    command();
-    props.editor?.commands.focus();
+  const runCommand = (command: (ed: TipTapEditor) => boolean) => {
+    const ed = getEditor();
+    if (ed) {
+      command(ed);
+      ed.commands.focus();
+    }
   };
 
   return (
@@ -141,7 +292,7 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
         <button
           class="toolbar-btn"
           classList={{ 'is-active': isActive('bold') }}
-          onClick={() => runCommand(() => props.editor?.chain().toggleBold().run() ?? false)}
+          onClick={() => runCommand((ed) => ed.chain().toggleBold().run())}
           title="Bold (Ctrl+B)"
         >
           <strong>B</strong>
@@ -149,7 +300,7 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
         <button
           class="toolbar-btn"
           classList={{ 'is-active': isActive('underline') }}
-          onClick={() => runCommand(() => props.editor?.chain().toggleUnderline().run() ?? false)}
+          onClick={() => runCommand((ed) => ed.chain().toggleUnderline().run())}
           title="Underline (Ctrl+U)"
         >
           <u>U</u>
@@ -162,9 +313,7 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
         <button
           class="toolbar-btn"
           classList={{ 'is-active': isActive('heading', { level: 1 }) }}
-          onClick={() =>
-            runCommand(() => props.editor?.chain().toggleHeading({ level: 1 }).run() ?? false)
-          }
+          onClick={() => runCommand((ed) => ed.chain().toggleHeading({ level: 1 }).run())}
           title="Heading 1 (Ctrl+1)"
         >
           H1
@@ -172,9 +321,7 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
         <button
           class="toolbar-btn"
           classList={{ 'is-active': isActive('heading', { level: 2 }) }}
-          onClick={() =>
-            runCommand(() => props.editor?.chain().toggleHeading({ level: 2 }).run() ?? false)
-          }
+          onClick={() => runCommand((ed) => ed.chain().toggleHeading({ level: 2 }).run())}
           title="Heading 2 (Ctrl+2)"
         >
           H2
@@ -182,9 +329,7 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
         <button
           class="toolbar-btn"
           classList={{ 'is-active': isActive('heading', { level: 3 }) }}
-          onClick={() =>
-            runCommand(() => props.editor?.chain().toggleHeading({ level: 3 }).run() ?? false)
-          }
+          onClick={() => runCommand((ed) => ed.chain().toggleHeading({ level: 3 }).run())}
           title="Heading 3 (Ctrl+3)"
         >
           H3
@@ -197,9 +342,7 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
         <button
           class="toolbar-btn"
           classList={{ 'is-active': isActive('bulletList') }}
-          onClick={() =>
-            runCommand(() => props.editor?.chain().toggleBulletList().run() ?? false)
-          }
+          onClick={() => runCommand((ed) => ed.chain().toggleBulletList().run())}
           title="Bullet List (Ctrl+Shift+8)"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -214,9 +357,7 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
         <button
           class="toolbar-btn"
           classList={{ 'is-active': isActive('orderedList') }}
-          onClick={() =>
-            runCommand(() => props.editor?.chain().toggleOrderedList().run() ?? false)
-          }
+          onClick={() => runCommand((ed) => ed.chain().toggleOrderedList().run())}
           title="Numbered List (Ctrl+Shift+7)"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -231,7 +372,7 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
         <button
           class="toolbar-btn"
           classList={{ 'is-active': isActive('taskList') }}
-          onClick={() => runCommand(() => props.editor?.chain().toggleTaskList().run() ?? false)}
+          onClick={() => runCommand((ed) => ed.chain().toggleTaskList().run())}
           title="Task List (Ctrl+Shift+9)"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">

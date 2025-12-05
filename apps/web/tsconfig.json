@@ -6,14 +6,12 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@pdtodo/types": ["../../packages/types/src/index.ts"],
+      "@pdtodo/ui": ["../../packages/ui/src/index.ts"],
+      "@pdtodo/editor": ["../../packages/editor/src/index.ts"],
+      "@pdtodo/sync": ["../../packages/sync/src/index.ts"]
     }
   },
-  "include": ["src/**/*"],
-  "references": [
-    { "path": "../../packages/types" },
-    { "path": "../../packages/ui" },
-    { "path": "../../packages/editor" },
-    { "path": "../../packages/sync" }
-  ]
+  "include": ["src/**/*"]
 }
