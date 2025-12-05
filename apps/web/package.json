@@ -1,0 +1,29 @@
+{
+  "name": "@pdtodo/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pdtodo/editor": "workspace:*",
+    "@pdtodo/sync": "workspace:*",
+    "@pdtodo/types": "workspace:*",
+    "@pdtodo/ui": "workspace:*",
+    "@solidjs/router": "^0.10.10",
+    "@tiptap/core": "^2.1.13",
+    "@tiptap/pm": "^2.1.13",
+    "solid-js": "^1.8.11",
+    "y-prosemirror": "^1.2.5",
+    "yjs": "^13.6.10"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10",
+    "vite-plugin-solid": "^2.8.0"
+  }
+}

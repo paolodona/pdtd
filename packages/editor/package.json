@@ -1,0 +1,33 @@
+{
+  "name": "@pdtodo/editor",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tiptap/core": "^2.1.13",
+    "@tiptap/extension-bold": "^2.1.13",
+    "@tiptap/extension-bullet-list": "^2.1.13",
+    "@tiptap/extension-document": "^2.1.13",
+    "@tiptap/extension-heading": "^2.1.13",
+    "@tiptap/extension-history": "^2.1.13",
+    "@tiptap/extension-list-item": "^2.1.13",
+    "@tiptap/extension-ordered-list": "^2.1.13",
+    "@tiptap/extension-paragraph": "^2.1.13",
+    "@tiptap/extension-placeholder": "^2.1.13",
+    "@tiptap/extension-task-item": "^2.1.13",
+    "@tiptap/extension-task-list": "^2.1.13",
+    "@tiptap/extension-text": "^2.1.13",
+    "@tiptap/extension-underline": "^2.1.13",
+    "@tiptap/pm": "^2.1.13",
+    "solid-js": "^1.8.11",
+    "y-prosemirror": "^1.2.5",
+    "yjs": "^13.6.10"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

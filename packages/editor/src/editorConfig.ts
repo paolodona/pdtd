@@ -1,0 +1,159 @@
+import { Extension } from '@tiptap/core';
+import Document from '@tiptap/extension-document';
+import Paragraph from '@tiptap/extension-paragraph';
+import Text from '@tiptap/extension-text';
+import Bold from '@tiptap/extension-bold';
+import Underline from '@tiptap/extension-underline';
+import Heading from '@tiptap/extension-heading';
+import BulletList from '@tiptap/extension-bullet-list';
+import OrderedList from '@tiptap/extension-ordered-list';
+import ListItem from '@tiptap/extension-list-item';
+import TaskList from '@tiptap/extension-task-list';
+import History from '@tiptap/extension-history';
+import Placeholder from '@tiptap/extension-placeholder';
+import { TaskItemExtended } from './extensions/TaskItemExtended';
+
+/**
+ * Get all extensions for the TipTap editor
+ */
+export function getEditorExtensions(options?: { placeholder?: string }) {
+  return [
+    Document,
+    Paragraph,
+    Text,
+    Bold,
+    Underline,
+    Heading.configure({
+      levels: [1, 2, 3],
+    }),
+    BulletList,
+    OrderedList,
+    ListItem.extend({
+      addKeyboardShortcuts() {
+        return {
+          Tab: () => this.editor.commands.sinkListItem('listItem'),
+          'Shift-Tab': () => this.editor.commands.liftListItem('listItem'),
+        };
+      },
+    }),
+    TaskList,
+    TaskItemExtended.configure({
+      nested: true,
+    }),
+    History,
+    Placeholder.configure({
+      placeholder: options?.placeholder ?? 'Start typing...',
+    }),
+    // Custom keyboard shortcuts extension
+    Extension.create({
+      name: 'customKeyboardShortcuts',
+      addKeyboardShortcuts() {
+        return {
+          'Mod-1': () => this.editor.commands.toggleHeading({ level: 1 }),
+          'Mod-2': () => this.editor.commands.toggleHeading({ level: 2 }),
+          'Mod-3': () => this.editor.commands.toggleHeading({ level: 3 }),
+          'Mod-Shift-7': () => this.editor.commands.toggleOrderedList(),
+          'Mod-Shift-8': () => this.editor.commands.toggleBulletList(),
+          'Mod-Shift-9': () => this.editor.commands.toggleTaskList(),
+        };
+      },
+    }),
+  ];
+}
+
+/**
+ * Editor styles for the TipTap editor
+ */
+export const editorStyles = `
+  .ProseMirror {
+    outline: none;
+    min-height: 100%;
+    padding: 1rem;
+  }
+
+  .ProseMirror p {
+    margin: 0.5em 0;
+  }
+
+  .ProseMirror h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 1rem 0 0.5rem;
+  }
+
+  .ProseMirror h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0.875rem 0 0.5rem;
+  }
+
+  .ProseMirror h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0.75rem 0 0.5rem;
+  }
+
+  .ProseMirror ul,
+  .ProseMirror ol {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0;
+  }
+
+  .ProseMirror li {
+    margin: 0.25rem 0;
+  }
+
+  .ProseMirror ul[data-type="taskList"] {
+    list-style: none;
+    padding-left: 0;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li > label {
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+    cursor: pointer;
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--accent-success);
+  }
+
+  .ProseMirror ul[data-type="taskList"] li > div {
+    flex: 1;
+  }
+
+  /* Strikethrough for completed tasks */
+  .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div {
+    text-decoration: line-through;
+    color: var(--text-muted);
+  }
+
+  /* Nested task lists */
+  .ProseMirror ul[data-type="taskList"] ul[data-type="taskList"] {
+    margin-left: 1.5rem;
+  }
+
+  .ProseMirror p.is-editor-empty:first-child::before {
+    color: var(--text-muted);
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .ProseMirror strong {
+    font-weight: 700;
+  }
+
+  .ProseMirror u {
+    text-decoration: underline;
+  }
+`;

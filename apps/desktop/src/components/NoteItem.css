@@ -1,0 +1,86 @@
+.note-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background-color 0.15s;
+}
+
+.note-item:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.note-item.is-selected {
+  background-color: var(--bg-tertiary);
+}
+
+.note-item.is-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: var(--accent-primary);
+}
+
+.note-item.is-trash {
+  opacity: 0.7;
+}
+
+.note-item-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.note-title {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.note-date {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.star-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background-color 0.15s;
+}
+
+.note-item:hover .star-btn {
+  opacity: 1;
+}
+
+.star-btn.is-starred {
+  opacity: 1;
+  color: var(--accent-warning);
+}
+
+.star-btn:hover {
+  background-color: var(--border-primary);
+  color: var(--accent-warning);
+}
