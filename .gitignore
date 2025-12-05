@@ -12,9 +12,12 @@ dist/
 build/
 out/
 .next/
+target/
+*.tsbuildinfo
 
 # Rust/Tauri build artifacts
 **/target/
+.pnpm-store/
 
 # Environment files
 .env
@@ -25,7 +28,14 @@ out/
 .vscode/settings.json
 .idea/
 
-# OS files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
 Thumbs.db
 
@@ -33,3 +43,11 @@ Thumbs.db
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# Testing
+coverage/
+
+# Misc
+*.pem
+*.key
+_ul

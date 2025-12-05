@@ -1,0 +1,114 @@
+import { createStore } from 'solid-js/store';
+import type { UserSettings } from '@pdtodo/types';
+import { DEFAULT_USER_SETTINGS } from '@pdtodo/types';
+
+interface SettingsState extends UserSettings {
+  isLoaded: boolean;
+}
+
+const [settingsState, setSettingsState] = createStore<SettingsState>({
+  ...DEFAULT_USER_SETTINGS,
+  isLoaded: false,
+});
+
+export const settingsStore = {
+  get fontSize() {
+    return settingsState.fontSize;
+  },
+  get sidebarWidth() {
+    return settingsState.sidebarWidth;
+  },
+  get theme() {
+    return settingsState.theme;
+  },
+  get isLoaded() {
+    return settingsState.isLoaded;
+  },
+};
+
+/**
+ * Load settings from storage
+ */
+export async function loadSettings(): Promise<void> {
+  try {
+    // In development without Tauri, use localStorage
+    const stored = localStorage.getItem('pdtodo-settings');
+    if (stored) {
+      const settings = JSON.parse(stored) as Partial<UserSettings>;
+      setSettingsState({
+        fontSize: settings.fontSize ?? DEFAULT_USER_SETTINGS.fontSize,
+        sidebarWidth: settings.sidebarWidth ?? DEFAULT_USER_SETTINGS.sidebarWidth,
+        theme: settings.theme ?? DEFAULT_USER_SETTINGS.theme,
+        isLoaded: true,
+      });
+    } else {
+      setSettingsState('isLoaded', true);
+    }
+  } catch (error) {
+    console.error('Failed to load settings:', error);
+    setSettingsState('isLoaded', true);
+  }
+}
+
+/**
+ * Save settings to storage
+ */
+async function saveSettings(): Promise<void> {
+  try {
+    const settings: UserSettings = {
+      fontSize: settingsState.fontSize,
+      sidebarWidth: settingsState.sidebarWidth,
+      theme: settingsState.theme,
+    };
+    localStorage.setItem('pdtodo-settings', JSON.stringify(settings));
+  } catch (error) {
+    console.error('Failed to save settings:', error);
+  }
+}
+
+/**
+ * Update font size
+ */
+export function setFontSize(size: number): void {
+  const clamped = Math.max(12, Math.min(24, size));
+  setSettingsState('fontSize', clamped);
+  saveSettings();
+}
+
+/**
+ * Increase font size
+ */
+export function increaseFontSize(): void {
+  setFontSize(settingsState.fontSize + 2);
+}
+
+/**
+ * Decrease font size
+ */
+export function decreaseFontSize(): void {
+  setFontSize(settingsState.fontSize - 2);
+}
+
+/**
+ * Reset font size to default
+ */
+export function resetFontSize(): void {
+  setFontSize(DEFAULT_USER_SETTINGS.fontSize);
+}
+
+/**
+ * Update sidebar width
+ */
+export function setSidebarWidth(width: number): void {
+  const clamped = Math.max(200, Math.min(400, width));
+  setSettingsState('sidebarWidth', clamped);
+  saveSettings();
+}
+
+/**
+ * Update theme
+ */
+export function setTheme(theme: 'dark' | 'light' | 'system'): void {
+  setSettingsState('theme', theme);
+  saveSettings();
+}
