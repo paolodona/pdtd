@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Turbo cache
+.turbo/
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+
+# Rust/Tauri build artifacts
+**/target/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE/Editor (optional - keep if you want to share settings)
+.vscode/settings.json
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
