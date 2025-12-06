@@ -13,21 +13,58 @@ import {
   setAllNotesExpanded,
   setTrashExpanded,
 } from '../stores/settingsStore';
+import { focusEditorStart } from '../stores/focusStore';
 import { NoteItem } from './NoteItem';
 import { SearchInput } from './SearchInput';
 import './Sidebar.css';
 
 export const Sidebar: Component = () => {
+  const searchQuery = () => notesStore.searchQuery;
 
   const scratchPad = createMemo(() => notesStore.scratchPad);
-  const starredNotes = createMemo(() => notesStore.starredNotes);
-  const activeNotes = createMemo(() =>
-    notesStore.filteredNotes.sort((a, b) => b.updatedAt - a.updatedAt)
-  );
+
+  // Filter starred notes by search query
+  const starredNotes = createMemo(() => {
+    const query = searchQuery().toLowerCase();
+    const starred = notesStore.starredNotes;
+    if (!query) return starred;
+    return starred.filter((n) => n.title.toLowerCase().includes(query));
+  });
+
+  // Get non-starred active notes, filtered by search query
+  const activeNotes = createMemo(() => {
+    const query = searchQuery().toLowerCase();
+    // Exclude starred notes from "All Notes" section
+    const nonStarred = notesStore.activeNotes.filter((n) => !n.starred);
+    const filtered = query
+      ? nonStarred.filter((n) => n.title.toLowerCase().includes(query))
+      : nonStarred;
+    return filtered.sort((a, b) => b.updatedAt - a.updatedAt);
+  });
+
+  // Combined matching notes for Enter key handling
+  const allMatchingNotes = createMemo(() => {
+    return [...starredNotes(), ...activeNotes()];
+  });
+
   const trashedNotes = createMemo(() => notesStore.trashedNotes);
 
   const handleNewNote = async () => {
     await createNote();
+  };
+
+  // Handle Enter in search: if exactly one match, select it and focus editor
+  const handleSearchEnter = () => {
+    const matches = allMatchingNotes();
+    if (matches.length === 1) {
+      const note = matches[0];
+      selectNote(note.id);
+      setSearchQuery('');
+      // Small delay to allow the editor to load the new note
+      setTimeout(() => {
+        focusEditorStart();
+      }, 100);
+    }
   };
 
   return (
@@ -37,6 +74,7 @@ export const Sidebar: Component = () => {
           value={notesStore.searchQuery}
           onInput={(value) => setSearchQuery(value)}
           placeholder="Search notes..."
+          onEnter={handleSearchEnter}
         />
         <button class="new-note-btn" onClick={handleNewNote} aria-label="New note">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -85,6 +123,7 @@ export const Sidebar: Component = () => {
                     onSelect={() => selectNote(note.id)}
                     onToggleStar={() => toggleNoteStarred(note.id)}
                     onDelete={() => deleteNote(note.id)}
+                    searchQuery={searchQuery()}
                   />
                 )}
               </For>
@@ -121,6 +160,7 @@ export const Sidebar: Component = () => {
                       onSelect={() => selectNote(note.id)}
                       onToggleStar={() => toggleNoteStarred(note.id)}
                       onDelete={() => deleteNote(note.id)}
+                      searchQuery={searchQuery()}
                     />
                   )}
                 </For>

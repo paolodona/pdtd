@@ -1,13 +1,39 @@
-import { Component } from 'solid-js';
+import { Component, onMount, onCleanup } from 'solid-js';
+import { registerSearchInput, restorePreviousFocus } from '../stores/focusStore';
 import './SearchInput.css';
 
 interface SearchInputProps {
   value: string;
   onInput: (value: string) => void;
   placeholder?: string;
+  onEnter?: () => void;
 }
 
 export const SearchInput: Component<SearchInputProps> = (props) => {
+  let inputRef: HTMLInputElement | undefined;
+
+  onMount(() => {
+    if (inputRef) {
+      registerSearchInput(inputRef);
+    }
+  });
+
+  onCleanup(() => {
+    registerSearchInput(null);
+  });
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      inputRef?.blur();
+      restorePreviousFocus();
+    } else if (e.key === 'Enter' && props.onEnter) {
+      e.preventDefault();
+      inputRef?.blur();
+      props.onEnter();
+    }
+  };
+
   return (
     <div class="search-input">
       <svg
@@ -26,9 +52,11 @@ export const SearchInput: Component<SearchInputProps> = (props) => {
         />
       </svg>
       <input
+        ref={inputRef}
         type="text"
         value={props.value}
         onInput={(e) => props.onInput(e.currentTarget.value)}
+        onKeyDown={handleKeyDown}
         placeholder={props.placeholder ?? 'Search...'}
         class="search-input-field"
       />

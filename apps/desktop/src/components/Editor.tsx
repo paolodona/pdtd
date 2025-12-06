@@ -4,9 +4,11 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import Collaboration from '@tiptap/extension-collaboration';
 import { getEditorExtensions, editorStyles } from '@pdtodo/editor';
 import { notesStore, updateNoteTitle, flushPendingTitleUpdate, updateNoteTimestamp, isScratchPad, SCRATCH_PAD_ID } from '../stores/notesStore';
+import { registerEditorFocus, unregisterEditorFocus } from '../stores/focusStore';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-shell';
 import * as Y from 'yjs';
+import { ySyncPluginKey } from 'y-prosemirror';
 import type { Note } from '@pdtodo/types';
 import './Editor.css';
 
@@ -84,14 +86,52 @@ export const Editor: Component<EditorProps> = (props) => {
   let editorRef: HTMLDivElement | undefined;
   let ydoc: Y.Doc | undefined;
   let updateHandler: (() => void) | undefined;
+  // Store saved selection position for focus restoration
+  let savedSelection: { from: number; to: number } | null = null;
   let tooltipHideTimeout: ReturnType<typeof setTimeout> | undefined;
 
   const [editor, setEditor] = createSignal<TipTapEditor | undefined>(undefined);
+  const [undoManager, setUndoManager] = createSignal<Y.UndoManager | undefined>(undefined);
   const [title, setTitle] = createSignal('');
   const [isSaving, setIsSaving] = createSignal(false);
   const [isLoading, setIsLoading] = createSignal(false);
   // Signal to trigger toolbar re-renders when editor state changes (selection, formatting)
   const [editorStateVersion, setEditorStateVersion] = createSignal(0);
+
+  // Register focus management callbacks
+  const saveEditorSelection = () => {
+    const ed = editor();
+    if (ed) {
+      const { from, to } = ed.state.selection;
+      savedSelection = { from, to };
+    }
+  };
+
+  const restoreEditorSelection = () => {
+    const ed = editor();
+    if (ed) {
+      if (savedSelection) {
+        // Restore to saved position
+        ed.commands.focus();
+        ed.commands.setTextSelection(savedSelection);
+      } else {
+        // Just focus at current position
+        ed.commands.focus();
+      }
+    }
+  };
+
+  const focusAtStart = () => {
+    const ed = editor();
+    if (ed) {
+      ed.commands.focus('start');
+    }
+  };
+
+  // Register with focus store on mount
+  onMount(() => {
+    registerEditorFocus(saveEditorSelection, restoreEditorSelection, focusAtStart);
+  });
 
   // Link tooltip state
   const [linkTooltip, setLinkTooltip] = createSignal<{
@@ -194,6 +234,30 @@ export const Editor: Component<EditorProps> = (props) => {
         attributes: {
           class: 'editor-content',
         },
+        handleKeyDown: (_view, event) => {
+          // Intercept Ctrl+Z / Cmd+Z for undo
+          if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
+            event.preventDefault();
+            const um = undoManager();
+            if (um && um.canUndo()) {
+              um.undo();
+            }
+            return true;
+          }
+          // Intercept Ctrl+Shift+Z / Cmd+Shift+Z or Ctrl+Y / Cmd+Y for redo
+          if ((event.ctrlKey || event.metaKey) && (
+            (event.key === 'z' && event.shiftKey) ||
+            (event.key === 'y' && !event.shiftKey)
+          )) {
+            event.preventDefault();
+            const um = undoManager();
+            if (um && um.canRedo()) {
+              um.redo();
+            }
+            return true;
+          }
+          return false;
+        },
         handleClick: (_view, _pos, event) => {
           // Handle link clicks - open in external browser
           const target = event.target as HTMLElement;
@@ -225,6 +289,13 @@ export const Editor: Component<EditorProps> = (props) => {
     try {
       const note = await invoke<Note>('get_note', { noteId });
 
+      // Destroy previous undo manager if any
+      const prevUndoManager = undoManager();
+      if (prevUndoManager) {
+        prevUndoManager.destroy();
+        setUndoManager(undefined);
+      }
+
       // Create new Yjs document
       ydoc = new Y.Doc();
 
@@ -235,6 +306,14 @@ export const Editor: Component<EditorProps> = (props) => {
           : new Uint8Array(note.content as number[]);
         Y.applyUpdate(ydoc, contentArray);
       }
+
+      // Create UndoManager for this document's content
+      // Must track ySyncPluginKey origin to capture changes from ProseMirror
+      const xmlFragment = ydoc.getXmlFragment('content');
+      const newUndoManager = new Y.UndoManager(xmlFragment, {
+        trackedOrigins: new Set([ySyncPluginKey]),
+      });
+      setUndoManager(newUndoManager);
 
       // Initialize editor with the Yjs document
       initializeEditor(ydoc);
@@ -365,6 +444,9 @@ export const Editor: Component<EditorProps> = (props) => {
     // Clear tooltip timeout
     cancelTooltipHide();
 
+    // Unregister focus callbacks
+    unregisterEditorFocus();
+
     // Flush any pending saves
     await flushPendingTitleUpdate();
     await flushPendingContentSave();
@@ -372,6 +454,10 @@ export const Editor: Component<EditorProps> = (props) => {
     const currentEditor = editor();
     if (currentEditor) {
       currentEditor.destroy();
+    }
+    const currentUndoManager = undoManager();
+    if (currentUndoManager) {
+      currentUndoManager.destroy();
     }
     if (ydoc && updateHandler) {
       ydoc.off('update', updateHandler);
@@ -381,7 +467,7 @@ export const Editor: Component<EditorProps> = (props) => {
   return (
     <div class="editor">
       <div class="editor-header">
-        <EditorToolbar editor={editor} editorStateVersion={editorStateVersion} />
+        <EditorToolbar editor={editor} editorStateVersion={editorStateVersion} undoManager={undoManager} />
         <div class="editor-header-row">
           <div class="editor-title-container">
             <input
@@ -454,6 +540,7 @@ export const Editor: Component<EditorProps> = (props) => {
 interface EditorToolbarProps {
   editor: Accessor<TipTapEditor | undefined>;
   editorStateVersion: Accessor<number>;
+  undoManager: Accessor<Y.UndoManager | undefined>;
 }
 
 const EditorToolbar: Component<EditorToolbarProps> = (props) => {
@@ -656,8 +743,77 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
     }
   };
 
+  // Check if undo is available (reactive)
+  const canUndo = () => {
+    props.editorStateVersion(); // Create reactive dependency
+    return props.undoManager()?.canUndo() ?? false;
+  };
+
+  // Check if redo is available (reactive)
+  const canRedo = () => {
+    props.editorStateVersion(); // Create reactive dependency
+    return props.undoManager()?.canRedo() ?? false;
+  };
+
+  // Handle undo action using Yjs UndoManager
+  const handleUndo = () => {
+    const um = props.undoManager();
+    const ed = getEditor();
+    if (um && ed && um.canUndo()) {
+      um.undo();
+      ed.commands.focus();
+    }
+  };
+
+  // Handle redo action using Yjs UndoManager
+  const handleRedo = () => {
+    const um = props.undoManager();
+    const ed = getEditor();
+    if (um && ed && um.canRedo()) {
+      um.redo();
+      ed.commands.focus();
+    }
+  };
+
   return (
     <div class="editor-toolbar">
+      <div class="toolbar-group">
+        <button
+          class="toolbar-btn"
+          classList={{ 'is-disabled': !canUndo() }}
+          onClick={handleUndo}
+          disabled={!canUndo()}
+          title="Undo (Ctrl+Z)"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 10h10a5 5 0 0 1 5 5v2M3 10l5-5M3 10l5 5"
+            />
+          </svg>
+        </button>
+        <button
+          class="toolbar-btn"
+          classList={{ 'is-disabled': !canRedo() }}
+          onClick={handleRedo}
+          disabled={!canRedo()}
+          title="Redo (Ctrl+Shift+Z)"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 10H11a5 5 0 0 0-5 5v2M21 10l-5-5M21 10l-5 5"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider" />
+
       <div class="toolbar-group">
         <button
           class="toolbar-btn"
