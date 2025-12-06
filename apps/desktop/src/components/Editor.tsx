@@ -4,6 +4,7 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import Collaboration from '@tiptap/extension-collaboration';
 import { getEditorExtensions, editorStyles } from '@pdtodo/editor';
 import { notesStore, updateNoteTitle, flushPendingTitleUpdate, updateNoteTimestamp, isScratchPad, SCRATCH_PAD_ID } from '../stores/notesStore';
+import { registerEditorFocus, unregisterEditorFocus } from '../stores/focusStore';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-shell';
 import * as Y from 'yjs';
@@ -84,6 +85,8 @@ export const Editor: Component<EditorProps> = (props) => {
   let editorRef: HTMLDivElement | undefined;
   let ydoc: Y.Doc | undefined;
   let updateHandler: (() => void) | undefined;
+  // Store saved selection position for focus restoration
+  let savedSelection: { from: number; to: number } | null = null;
 
   const [editor, setEditor] = createSignal<TipTapEditor | undefined>(undefined);
   const [title, setTitle] = createSignal('');
@@ -91,6 +94,34 @@ export const Editor: Component<EditorProps> = (props) => {
   const [isLoading, setIsLoading] = createSignal(false);
   // Signal to trigger toolbar re-renders when editor state changes (selection, formatting)
   const [editorStateVersion, setEditorStateVersion] = createSignal(0);
+
+  // Register focus management callbacks
+  const saveEditorSelection = () => {
+    const ed = editor();
+    if (ed) {
+      const { from, to } = ed.state.selection;
+      savedSelection = { from, to };
+    }
+  };
+
+  const restoreEditorSelection = () => {
+    const ed = editor();
+    if (ed) {
+      if (savedSelection) {
+        // Restore to saved position
+        ed.commands.focus();
+        ed.commands.setTextSelection(savedSelection);
+      } else {
+        // Just focus at current position
+        ed.commands.focus();
+      }
+    }
+  };
+
+  // Register with focus store on mount
+  onMount(() => {
+    registerEditorFocus(saveEditorSelection, restoreEditorSelection);
+  });
 
   // Get the last updated timestamp from the note
   const lastUpdated = createMemo(() => {
@@ -272,6 +303,9 @@ export const Editor: Component<EditorProps> = (props) => {
 
   // Cleanup - save content before destroying
   onCleanup(async () => {
+    // Unregister focus callbacks
+    unregisterEditorFocus();
+
     // Flush any pending saves
     await flushPendingTitleUpdate();
     await flushPendingContentSave();
