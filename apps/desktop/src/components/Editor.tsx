@@ -339,6 +339,18 @@ export const Editor: Component<EditorProps> = (props) => {
     setLinkTooltip((prev) => ({ ...prev, visible: false }));
   };
 
+  // Handle click on editor to open links (Ctrl/Cmd + click)
+  const handleEditorClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const link = target.closest('a');
+
+    if (link && link.href && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      e.stopPropagation();
+      open(link.href).catch(console.error);
+    }
+  };
+
   // Open link from tooltip
   const handleTooltipLinkClick = () => {
     const { url } = linkTooltip();
@@ -393,6 +405,7 @@ export const Editor: Component<EditorProps> = (props) => {
         class="editor-body"
         onMouseMove={handleEditorMouseMove}
         onMouseLeave={handleEditorMouseLeave}
+        onClick={handleEditorClick}
       >
         <div ref={editorRef} class="editor-content-wrapper" />
       </div>
