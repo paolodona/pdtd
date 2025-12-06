@@ -121,7 +121,7 @@ export const editorStyles = `
 
   .ProseMirror ul[data-type="taskList"] li {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     margin-bottom: 3px;
     min-height: 22px;
@@ -133,6 +133,7 @@ export const editorStyles = `
     align-items: center;
     justify-content: center;
     margin: 0;
+    margin-top: 3px;
     height: 16px;
     width: 16px;
   }
