@@ -92,6 +92,14 @@ export const Editor: Component<EditorProps> = (props) => {
   // Signal to trigger toolbar re-renders when editor state changes (selection, formatting)
   const [editorStateVersion, setEditorStateVersion] = createSignal(0);
 
+  // Link tooltip state
+  const [linkTooltip, setLinkTooltip] = createSignal<{
+    visible: boolean;
+    url: string;
+    x: number;
+    y: number;
+  }>({ visible: false, url: '', x: 0, y: 0 });
+
   // Get the last updated timestamp from the note
   const lastUpdated = createMemo(() => {
     const note = notesStore.notes.find((n) => n.id === props.noteId);
@@ -270,6 +278,55 @@ export const Editor: Component<EditorProps> = (props) => {
     }
   };
 
+  // Handle mouse move over editor to detect link hover
+  const handleEditorMouseMove = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const link = target.closest('a');
+
+    if (link && link.href) {
+      // Position tooltip above the link
+      const rect = link.getBoundingClientRect();
+      const editorBody = editorRef?.closest('.editor-body');
+      const editorBodyRect = editorBody?.getBoundingClientRect();
+
+      // Calculate position relative to viewport, then adjust for scroll
+      const x = rect.left;
+      const y = rect.top - 8; // Position above the link with small gap
+
+      setLinkTooltip({
+        visible: true,
+        url: link.href,
+        x,
+        y,
+      });
+    } else {
+      // Only hide if we're not hovering over the tooltip itself
+      const tooltip = document.querySelector('.link-tooltip');
+      if (!tooltip?.contains(e.relatedTarget as Node)) {
+        setLinkTooltip((prev) => ({ ...prev, visible: false }));
+      }
+    }
+  };
+
+  // Handle mouse leave from editor
+  const handleEditorMouseLeave = (e: MouseEvent) => {
+    // Check if we're moving to the tooltip
+    const tooltip = document.querySelector('.link-tooltip');
+    if (tooltip?.contains(e.relatedTarget as Node)) {
+      return; // Don't hide if moving to tooltip
+    }
+    setLinkTooltip((prev) => ({ ...prev, visible: false }));
+  };
+
+  // Open link from tooltip
+  const handleTooltipLinkClick = () => {
+    const { url } = linkTooltip();
+    if (url) {
+      open(url).catch(console.error);
+      setLinkTooltip((prev) => ({ ...prev, visible: false }));
+    }
+  };
+
   // Cleanup - save content before destroying
   onCleanup(async () => {
     // Flush any pending saves
@@ -308,9 +365,50 @@ export const Editor: Component<EditorProps> = (props) => {
           </div>
         </div>
       </div>
-      <div class="editor-body">
+      <div
+        class="editor-body"
+        onMouseMove={handleEditorMouseMove}
+        onMouseLeave={handleEditorMouseLeave}
+      >
         <div ref={editorRef} class="editor-content-wrapper" />
       </div>
+
+      {/* Link tooltip */}
+      <Show when={linkTooltip().visible}>
+        <div
+          class="link-tooltip"
+          style={{
+            position: 'fixed',
+            left: `${linkTooltip().x}px`,
+            top: `${linkTooltip().y}px`,
+            transform: 'translateY(-100%)',
+          }}
+          onMouseLeave={() => setLinkTooltip((prev) => ({ ...prev, visible: false }))}
+        >
+          <button
+            class="link-tooltip-btn"
+            onClick={handleTooltipLinkClick}
+            title="Open link"
+          >
+            <svg
+              class="link-tooltip-icon"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M2 12h20" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+            <span class="link-tooltip-url">{linkTooltip().url}</span>
+          </button>
+        </div>
+      </Show>
     </div>
   );
 };
