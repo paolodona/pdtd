@@ -216,14 +216,18 @@ The desktop frontend is built with SolidJS and organized as follows:
 **Main Components** (`apps/desktop/src/components/`):
 - `App.tsx` - Root component, orchestrates layout and keyboard shortcuts
 - `TitleBar.tsx` - Custom Tauri window controls (minimize, maximize, close)
+- `DropdownMenu.tsx` - Hamburger menu with About, Shortcuts, Logs options
 - `Sidebar.tsx` - Note navigation with search, sections, and note list
 - `Editor.tsx` - TipTap editor with toolbar, title field, and content area
 - `NoteItem.tsx` - Individual note in sidebar with actions (star, delete)
-- `SearchInput.tsx` - Reusable search input component
+- `SearchInput.tsx` - Reusable search input component with highlighting
+- `AboutOverlay.tsx` - About dialog showing app info and configuration
+- `ShortcutsModal.tsx` - Keyboard shortcuts reference modal
+- `LinkTooltip.tsx` - Tooltip for opening links on hover
 
 **State Management** (`apps/desktop/src/stores/`):
 - `notesStore.ts` - Note CRUD operations, selection, search filtering
-- `settingsStore.ts` - User preferences (fontSize, sidebarWidth, theme)
+- `settingsStore.ts` - User preferences (fontSize, sidebarWidth, theme, allNotesExpanded, trashExpanded, lastOpenedNoteId, apiServerUrl)
 
 **Hooks** (`apps/desktop/src/hooks/`):
 - `useKeyboardShortcuts.ts` - Global keyboard shortcut handler
@@ -231,7 +235,8 @@ The desktop frontend is built with SolidJS and organized as follows:
 **Tauri Commands** (`apps/desktop/src-tauri/src/commands/`):
 - Note CRUD: `get_notes`, `get_note`, `create_note`, `update_note_*`, `delete_note`, etc.
 - Search: `search_notes` (FTS5)
-- Utilities: `fetch_url_title`
+- Utilities: `fetch_url_title`, `open_url` (shell open for links)
+- Logging: `get_logs`, `clear_logs` (application logging)
 
 **Storage** (`apps/desktop/src-tauri/src/storage/`):
 - SQLite database for metadata and FTS5 index
@@ -331,9 +336,11 @@ Typography
 Keyboard Shortcuts
 Shortcut	Action
 Ctrl+N	New note
-Ctrl+F	Search by title
+Ctrl+F	Focus search input
 Ctrl+Shift+F	Search in note body
 Ctrl+S	Force save (auto-saves anyway)
+Ctrl+Z	Undo (Yjs-aware)
+Ctrl+Y / Ctrl+Shift+Z	Redo (Yjs-aware)
 Ctrl++ / Ctrl+=	Increase font size
 Ctrl+-	Decrease font size
 Ctrl+0	Reset font size to default
@@ -348,6 +355,8 @@ Ctrl+Shift+9	Checklist
 Ctrl+Enter	Toggle checkbox
 Tab	Indent list item
 Shift+Tab	Outdent list item
+Ctrl+K	Insert/edit link
+Ctrl+Click	Open link in browser
 Ctrl+Delete	Move note to trash
 Ctrl+Shift+D	Duplicate note
 Ctrl+,	Open settings
@@ -696,10 +705,14 @@ pdtodo/
 │   │   │   ├── components/         # UI Components
 │   │   │   │   ├── App.tsx         # Root layout component
 │   │   │   │   ├── TitleBar.tsx    # Custom window controls
+│   │   │   │   ├── DropdownMenu.tsx # Hamburger menu (About, Shortcuts, Logs)
 │   │   │   │   ├── Sidebar.tsx     # Note navigation panel
 │   │   │   │   ├── Editor.tsx      # TipTap editor with toolbar
 │   │   │   │   ├── NoteItem.tsx    # Note list item
-│   │   │   │   └── SearchInput.tsx # Search component
+│   │   │   │   ├── SearchInput.tsx # Search component with highlighting
+│   │   │   │   ├── AboutOverlay.tsx # About dialog
+│   │   │   │   ├── ShortcutsModal.tsx # Keyboard shortcuts reference
+│   │   │   │   └── LinkTooltip.tsx # Link tooltip for opening URLs
 │   │   │   ├── stores/             # SolidJS stores
 │   │   │   │   ├── notesStore.ts   # Note CRUD, selection, filtering
 │   │   │   │   └── settingsStore.ts # User preferences

@@ -32,6 +32,9 @@ The sidebar provides navigation and organization for all notes.
 - Filters by note title (case-insensitive)
 - Shows "No matching notes" when no results found
 - Clear button (X) appears when text is entered
+- Keyboard shortcut: Ctrl+F to focus search input
+- Search highlighting: Matching text is highlighted in yellow in note titles
+- Press Enter when single match found to open that note and focus editor
 
 **New Note Button**
 - Full-width blue accent button at top of sidebar
@@ -49,16 +52,21 @@ The sidebar provides navigation and organization for all notes.
 - Displays all starred/favorited notes
 - Only visible when at least one note is starred
 - Section header: "SHORTCUTS" (uppercase, muted text)
+- Starred notes appear ONLY here, not duplicated in All Notes section
 
 **All Notes Section**
-- Displays all active (non-deleted) notes
+- Displays all active (non-deleted, non-starred) notes
+- Starred notes are excluded (shown only in Shortcuts)
 - Sorted by last updated date (newest first)
-- Section header: "ALL NOTES" (uppercase, muted text)
+- Section header: "ALL NOTES" (uppercase, muted text) with collapse toggle
+- Collapsible: Click header to expand/collapse
+- Collapsed/expanded state is persisted across sessions
 
 **Trash Section**
 - Collapsible section showing soft-deleted notes
 - Only visible when at least one note is in trash
 - Section header: "TRASH" with expand/collapse toggle
+- Collapsed/expanded state is persisted across sessions
 - Trashed notes appear with reduced opacity
 - Trashed notes cannot be edited
 
@@ -99,6 +107,13 @@ Each note in the sidebar displays:
 
 The toolbar is positioned at the top of the editor area with no border, blending seamlessly with the content area. Buttons are 32x32px with icon-only display.
 
+**Undo/Redo**
+- **Undo** (↶ icon) - Keyboard: Ctrl+Z
+- **Redo** (↷ icon) - Keyboard: Ctrl+Y or Ctrl+Shift+Z
+- Uses Yjs UndoManager for proper CRDT-aware undo/redo
+- Buttons are disabled (greyed out) when no operations available
+- Browser's native undo/redo is intercepted to use Yjs instead
+
 **Text Formatting**
 - **Bold** (B icon) - Keyboard: Ctrl+B
 - **Underline** (U icon) - Keyboard: Ctrl+U
@@ -122,9 +137,17 @@ The toolbar is positioned at the top of the editor area with no border, blending
 - Opens prompt for URL entry
 - Clicking when link is active removes the link
 
+**Clear Done** (Desktop only)
+- Appears dynamically when there are completed tasks in the note
+- Clicking removes all checked/completed task items
+- Handles nested task lists properly
+- Right-aligned with dark grey rounded background
+
 **Button States**
 - Active formatting shows blue background with white icon
+- Disabled buttons show reduced opacity (0.35) with default cursor
 - Buttons grouped with vertical dividers between groups
+- Buttons are reactive to editor selection changes
 
 ### Note Header
 
@@ -203,8 +226,16 @@ This section defines the complete behavior specification for task lists. Use thi
 - Pasting a URL automatically creates a link
 
 ### Click Behavior
-- Clicking a link opens it in the external browser
-- Links do NOT navigate within the app
+- Clicking a link in the editor selects/edits the text (does not open)
+- Ctrl+Click opens link in external browser (Desktop)
+- Link tooltip provides easy click-to-open functionality
+
+### Link Tooltip (Desktop)
+- Hovering over a link shows a tooltip after brief delay
+- Tooltip displays globe icon and the URL
+- Clicking the tooltip opens the link in external browser
+- Small delay before hiding tooltip allows time to click
+- Tooltip positioned above the link
 
 ### Manual Link Creation
 - Use Ctrl+K or the toolbar link button
@@ -225,6 +256,7 @@ This section defines the complete behavior specification for task lists. Use thi
 | Shortcut | Action |
 |----------|--------|
 | Ctrl+N | Create new note |
+| Ctrl+F | Focus search input |
 | Ctrl+Delete | Delete selected note (move to trash) |
 | Ctrl+Shift+D | Duplicate selected note |
 | Ctrl++ or Ctrl+= | Increase font size |
@@ -235,6 +267,8 @@ This section defines the complete behavior specification for task lists. Use thi
 
 | Shortcut | Action |
 |----------|--------|
+| Ctrl+Z | Undo |
+| Ctrl+Y or Ctrl+Shift+Z | Redo |
 | Ctrl+B | Toggle bold |
 | Ctrl+U | Toggle underline |
 | Ctrl+1 | Toggle Heading 1 |
@@ -247,6 +281,7 @@ This section defines the complete behavior specification for task lists. Use thi
 | Shift+Tab | Outdent list item |
 | Ctrl+Enter | Toggle task checkbox |
 | Ctrl+K | Insert/edit link |
+| Ctrl+Click | Open link in browser (on a link) |
 
 ---
 
@@ -266,6 +301,18 @@ This section defines the complete behavior specification for task lists. Use thi
 ### Theme
 - Dark theme (default and currently only option)
 - Light and System themes planned for future
+
+### Sidebar Section State (Desktop)
+- All Notes section expanded/collapsed state persisted
+- Trash section expanded/collapsed state persisted
+
+### Last Opened Note (Desktop)
+- Remembers the last selected note
+- Automatically restores selection on app restart
+
+### API Server URL (Desktop)
+- Configurable API server URL for sync
+- Default: https://api.pdtodo.com
 
 ---
 
@@ -316,11 +363,37 @@ This section defines the complete behavior specification for task lists. Use thi
 
 ### Custom Titlebar
 - Custom draggable titlebar (replaces native window chrome)
-- Left side: App title "pdtodo"
+- Left side: Hamburger menu button, App title "pdtodo"
 - Right side: Minimize, Maximize, Close buttons
 - Close button has red hover highlight
 - Double-click titlebar toggles maximize/restore
 - Drag titlebar background to move window
+
+### Dropdown Menu
+- Hamburger menu button (☰) in titlebar
+- Menu items:
+  - **About** - Opens About overlay with app info
+  - **Shortcuts** - Opens keyboard shortcuts reference modal
+  - **Logs** - Opens application logs window
+
+### About Overlay
+- Shows app name and version
+- Displays local storage path
+- Shows API server URL configuration
+- Close button to dismiss
+
+### Keyboard Shortcuts Modal
+- Accessed via menu → Shortcuts
+- Organized by category (General, Editor)
+- Lists all keyboard shortcuts with descriptions
+- Modal with close button
+
+### Application Logging
+- In-app logging infrastructure
+- Logs note operations (create, update, delete, restore, duplicate)
+- Circular buffer to limit memory usage
+- Accessible via menu → Logs
+- Opens in dedicated window for viewing
 
 ### Local Data Storage
 - **Metadata**: SQLite database (pdtodo.db)
