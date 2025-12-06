@@ -119,9 +119,16 @@ export const Editor: Component<EditorProps> = (props) => {
     }
   };
 
+  const focusAtStart = () => {
+    const ed = editor();
+    if (ed) {
+      ed.commands.focus('start');
+    }
+  };
+
   // Register with focus store on mount
   onMount(() => {
-    registerEditorFocus(saveEditorSelection, restoreEditorSelection);
+    registerEditorFocus(saveEditorSelection, restoreEditorSelection, focusAtStart);
   });
 
   // Link tooltip state

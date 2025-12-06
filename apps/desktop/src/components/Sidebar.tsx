@@ -13,6 +13,7 @@ import {
   setAllNotesExpanded,
   setTrashExpanded,
 } from '../stores/settingsStore';
+import { focusEditorStart } from '../stores/focusStore';
 import { NoteItem } from './NoteItem';
 import { SearchInput } from './SearchInput';
 import './Sidebar.css';
@@ -41,10 +42,29 @@ export const Sidebar: Component = () => {
     return filtered.sort((a, b) => b.updatedAt - a.updatedAt);
   });
 
+  // Combined matching notes for Enter key handling
+  const allMatchingNotes = createMemo(() => {
+    return [...starredNotes(), ...activeNotes()];
+  });
+
   const trashedNotes = createMemo(() => notesStore.trashedNotes);
 
   const handleNewNote = async () => {
     await createNote();
+  };
+
+  // Handle Enter in search: if exactly one match, select it and focus editor
+  const handleSearchEnter = () => {
+    const matches = allMatchingNotes();
+    if (matches.length === 1) {
+      const note = matches[0];
+      selectNote(note.id);
+      setSearchQuery('');
+      // Small delay to allow the editor to load the new note
+      setTimeout(() => {
+        focusEditorStart();
+      }, 100);
+    }
   };
 
   return (
@@ -54,6 +74,7 @@ export const Sidebar: Component = () => {
           value={notesStore.searchQuery}
           onInput={(value) => setSearchQuery(value)}
           placeholder="Search notes..."
+          onEnter={handleSearchEnter}
         />
         <button class="new-note-btn" onClick={handleNewNote} aria-label="New note">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">

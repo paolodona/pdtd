@@ -6,6 +6,7 @@ interface SearchInputProps {
   value: string;
   onInput: (value: string) => void;
   placeholder?: string;
+  onEnter?: () => void;
 }
 
 export const SearchInput: Component<SearchInputProps> = (props) => {
@@ -26,6 +27,10 @@ export const SearchInput: Component<SearchInputProps> = (props) => {
       e.preventDefault();
       inputRef?.blur();
       restorePreviousFocus();
+    } else if (e.key === 'Enter' && props.onEnter) {
+      e.preventDefault();
+      inputRef?.blur();
+      props.onEnter();
     }
   };
 
