@@ -235,16 +235,16 @@ export const editorStyles = `
 
   .drag-handle {
     position: absolute;
-    left: -28px;
-    width: 20px;
-    height: 20px;
+    left: -20px;
+    width: 16px;
+    height: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: grab;
     color: var(--text-muted, #6B7280);
-    opacity: 0.4;
-    transition: opacity 0.15s ease, color 0.15s ease;
+    opacity: 0.5;
+    transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
     border-radius: 3px;
     user-select: none;
     z-index: 10;
@@ -253,11 +253,12 @@ export const editorStyles = `
   .drag-handle:hover {
     opacity: 1;
     color: var(--text-primary, #E5E7EB);
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08);
   }
 
   .drag-handle:active {
     cursor: grabbing;
+    opacity: 1;
   }
 
   .drag-handle svg {

@@ -52,6 +52,46 @@ function getBlockAtPos(doc: ProseMirrorNode, pos: number): { node: ProseMirrorNo
 }
 
 /**
+ * Find block at Y coordinate by scanning through document blocks
+ */
+function findBlockAtY(view: EditorView, y: number): { node: ProseMirrorNode; pos: number } | null {
+  const doc = view.state.doc;
+  let foundBlock: { node: ProseMirrorNode; pos: number } | null = null;
+
+  doc.descendants((node, pos) => {
+    // Only check top-level blocks or list items
+    const $pos = doc.resolve(pos);
+    const parent = $pos.parent;
+
+    const isTopLevel = $pos.depth === 0;
+    const isListItem = parent.type.name === 'bulletList' ||
+                       parent.type.name === 'orderedList' ||
+                       parent.type.name === 'taskList';
+
+    if (!isTopLevel && !isListItem) {
+      return true; // Continue descending
+    }
+
+    try {
+      const coords = view.coordsAtPos(pos);
+      const endCoords = view.coordsAtPos(pos + node.nodeSize);
+
+      // Check if Y is within this block's vertical bounds
+      if (y >= coords.top && y <= endCoords.bottom) {
+        foundBlock = { node, pos };
+        return false; // Stop iteration
+      }
+    } catch {
+      // Position might be invalid, continue
+    }
+
+    return true;
+  });
+
+  return foundBlock;
+}
+
+/**
  * Find the drop position from mouse coordinates
  */
 function findDropPosition(view: EditorView, event: DragEvent): number | null {
@@ -98,14 +138,13 @@ function createDecorations(state: DragHandleState, doc: ProseMirrorNode): Decora
       handleWidget.className = 'drag-handle';
       handleWidget.setAttribute('draggable', 'true');
       handleWidget.setAttribute('data-drag-handle', 'true');
+      // 2x2 grid with bigger, more spaced dots
       handleWidget.innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="9" cy="6" r="2"/>
-          <circle cx="15" cy="6" r="2"/>
-          <circle cx="9" cy="12" r="2"/>
-          <circle cx="15" cy="12" r="2"/>
-          <circle cx="9" cy="18" r="2"/>
-          <circle cx="15" cy="18" r="2"/>
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+          <circle cx="4" cy="4" r="2"/>
+          <circle cx="12" cy="4" r="2"/>
+          <circle cx="4" cy="12" r="2"/>
+          <circle cx="12" cy="12" r="2"/>
         </svg>
       `;
 
@@ -152,6 +191,7 @@ export const DragHandle = Extension.create({
 
   addProseMirrorPlugins() {
     let draggedNodeData: { from: number; to: number; content: ProseMirrorNode } | null = null;
+    let editorContainer: HTMLElement | null = null;
 
     return [
       new Plugin({
@@ -192,30 +232,44 @@ export const DragHandle = Extension.create({
 
           handleDOMEvents: {
             mousemove(view, event) {
-              const target = event.target as HTMLElement;
-
-              // Don't update if we're over the drag handle itself
-              if (target.closest('.drag-handle')) {
-                return false;
+              // Store reference to editor container for boundary checks
+              if (!editorContainer) {
+                editorContainer = view.dom.closest('.editor-content-wrapper') as HTMLElement;
               }
 
-              const pos = view.posAtCoords({ left: event.clientX, top: event.clientY });
-              if (!pos) {
-                const state = dragHandlePluginKey.getState(view.state);
-                if (state?.hoveredPos !== null) {
-                  view.dispatch(
-                    view.state.tr.setMeta(dragHandlePluginKey, { hoveredPos: null })
-                  );
-                }
-                return false;
-              }
-
-              const block = getBlockAtPos(view.state.doc, pos.pos);
               const state = dragHandlePluginKey.getState(view.state);
+
+              // Check if we're within the editor's horizontal bounds (with extra left margin for drag handle)
+              if (editorContainer) {
+                const rect = editorContainer.getBoundingClientRect();
+                const leftBound = rect.left - 40; // Allow 40px to the left for the drag handle
+                const rightBound = rect.right;
+                const topBound = rect.top;
+                const bottomBound = rect.bottom;
+
+                // If mouse is outside the editor area entirely, clear hover
+                if (event.clientX < leftBound || event.clientX > rightBound ||
+                    event.clientY < topBound || event.clientY > bottomBound) {
+                  if (state?.hoveredPos !== null && !state?.isDragging) {
+                    view.dispatch(
+                      view.state.tr.setMeta(dragHandlePluginKey, { hoveredPos: null })
+                    );
+                  }
+                  return false;
+                }
+              }
+
+              // Find block by Y coordinate - this allows the handle to stay visible
+              // when moving horizontally toward it
+              const block = findBlockAtY(view, event.clientY);
 
               if (block && state?.hoveredPos !== block.pos) {
                 view.dispatch(
                   view.state.tr.setMeta(dragHandlePluginKey, { hoveredPos: block.pos })
+                );
+              } else if (!block && state?.hoveredPos !== null && !state?.isDragging) {
+                view.dispatch(
+                  view.state.tr.setMeta(dragHandlePluginKey, { hoveredPos: null })
                 );
               }
 
@@ -225,8 +279,9 @@ export const DragHandle = Extension.create({
             mouseleave(view, event) {
               const relatedTarget = event.relatedTarget as HTMLElement | null;
 
-              // Don't clear if moving to drag handle
-              if (relatedTarget?.closest('.drag-handle')) {
+              // Don't clear if moving to drag handle or staying within editor area
+              if (relatedTarget?.closest('.drag-handle') ||
+                  relatedTarget?.closest('.editor-content-wrapper')) {
                 return false;
               }
 
@@ -330,13 +385,11 @@ export const DragHandle = Extension.create({
                 `;
               } else {
                 dragImage.innerHTML = `
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" opacity="0.7">
-                    <circle cx="9" cy="6" r="2"/>
-                    <circle cx="15" cy="6" r="2"/>
-                    <circle cx="9" cy="12" r="2"/>
-                    <circle cx="15" cy="12" r="2"/>
-                    <circle cx="9" cy="18" r="2"/>
-                    <circle cx="15" cy="18" r="2"/>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" opacity="0.7">
+                    <circle cx="4" cy="4" r="2"/>
+                    <circle cx="12" cy="4" r="2"/>
+                    <circle cx="4" cy="12" r="2"/>
+                    <circle cx="12" cy="12" r="2"/>
                   </svg>
                 `;
               }
