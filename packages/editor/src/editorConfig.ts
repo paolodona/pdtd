@@ -13,6 +13,7 @@ import History from '@tiptap/extension-history';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
 import { TaskItemExtended } from './extensions/TaskItemExtended';
+import { DragHandle } from './extensions/DragHandle';
 
 /**
  * Get all extensions for the TipTap editor
@@ -68,6 +69,8 @@ export function getEditorExtensions(options?: { placeholder?: string }) {
         };
       },
     }),
+    // Drag handle for reordering blocks
+    DragHandle,
   ];
 }
 
@@ -208,5 +211,131 @@ export const editorStyles = `
 
   .ProseMirror u {
     text-decoration: underline;
+  }
+
+  /* Drag Handle Styles */
+  .ProseMirror {
+    position: relative;
+  }
+
+  .drag-handle {
+    position: absolute;
+    left: -28px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    color: var(--text-muted, #6B7280);
+    opacity: 0.4;
+    transition: opacity 0.15s ease, color 0.15s ease;
+    border-radius: 3px;
+    user-select: none;
+    z-index: 10;
+  }
+
+  .drag-handle:hover {
+    opacity: 1;
+    color: var(--text-primary, #E5E7EB);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .drag-handle:active {
+    cursor: grabbing;
+  }
+
+  .drag-handle svg {
+    pointer-events: none;
+  }
+
+  /* Drop Indicator */
+  .drop-indicator {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: transparent;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .drop-indicator::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 3px;
+    background: repeating-linear-gradient(
+      to right,
+      var(--accent-primary, #3B82F6) 0,
+      var(--accent-primary, #3B82F6) 8px,
+      transparent 8px,
+      transparent 12px
+    );
+    border-radius: 2px;
+  }
+
+  .drop-indicator::after {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    background: var(--accent-primary, #3B82F6);
+    border-radius: 50%;
+  }
+
+  /* Dragging State - subtle highlight */
+  .ProseMirror .is-dragging {
+    background: rgba(59, 130, 246, 0.08);
+    border-radius: 4px;
+    opacity: 0.6;
+  }
+
+  /* Drag Ghost (for multi-item drag) */
+  .drag-ghost {
+    position: fixed;
+    top: -1000px;
+    left: -1000px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(30, 32, 36, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: var(--text-primary, #E5E7EB);
+    font-size: 12px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  .drag-ghost svg {
+    flex-shrink: 0;
+  }
+
+  /* Ensure proper positioning for list items with drag handles */
+  .ProseMirror ul[data-type="taskList"] li,
+  .ProseMirror ul > li,
+  .ProseMirror ol > li {
+    position: relative;
+  }
+
+  /* Adjust drag handle position for different block types */
+  .ProseMirror > p,
+  .ProseMirror > h1,
+  .ProseMirror > h2,
+  .ProseMirror > h3,
+  .ProseMirror > ul,
+  .ProseMirror > ol,
+  .ProseMirror > ul[data-type="taskList"] {
+    position: relative;
   }
 `;
