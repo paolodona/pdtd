@@ -1,11 +1,12 @@
 import { Component, onMount, onCleanup, createEffect, createSignal, createMemo, Accessor, on } from 'solid-js';
-import { Editor as TipTapEditor } from '@tiptap/core';
+import { Editor as TipTapEditor, Extension } from '@tiptap/core';
 import Collaboration from '@tiptap/extension-collaboration';
 import { getEditorExtensions, editorStyles } from '@pdtodo/editor';
 import { notesStore, updateNoteTitle, flushPendingTitleUpdate, updateNoteTimestamp, isScratchPad, SCRATCH_PAD_ID } from '../stores/notesStore';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-shell';
 import * as Y from 'yjs';
+import { yUndoPlugin, undoCommand, redoCommand } from 'y-prosemirror';
 import type { Note } from '@pdtodo/types';
 import './Editor.css';
 
@@ -155,6 +156,14 @@ export const Editor: Component<EditorProps> = (props) => {
     const baseExtensions = getEditorExtensions({ placeholder: 'Start writing...' })
       .filter((ext: { name: string }) => ext.name !== 'history');
 
+    // Create Yjs undo extension that wraps y-prosemirror's undo plugin
+    const YjsUndo = Extension.create({
+      name: 'yjsUndo',
+      addProseMirrorPlugins() {
+        return [yUndoPlugin()];
+      },
+    });
+
     const newEditor = new TipTapEditor({
       element: editorRef,
       extensions: [
@@ -163,6 +172,7 @@ export const Editor: Component<EditorProps> = (props) => {
           document: doc,
           field: 'content',
         }),
+        YjsUndo,
       ],
       editorProps: {
         attributes: {
@@ -338,8 +348,59 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
     }
   };
 
+  // Handle undo action using y-prosemirror
+  const handleUndo = () => {
+    const ed = getEditor();
+    if (ed) {
+      undoCommand(ed.view.state, ed.view.dispatch, ed.view);
+      ed.commands.focus();
+    }
+  };
+
+  // Handle redo action using y-prosemirror
+  const handleRedo = () => {
+    const ed = getEditor();
+    if (ed) {
+      redoCommand(ed.view.state, ed.view.dispatch, ed.view);
+      ed.commands.focus();
+    }
+  };
+
   return (
     <div class="editor-toolbar">
+      <div class="toolbar-group">
+        <button
+          class="toolbar-btn"
+          onClick={handleUndo}
+          title="Undo (Ctrl+Z)"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 10h10a5 5 0 0 1 5 5v2M3 10l5-5M3 10l5 5"
+            />
+          </svg>
+        </button>
+        <button
+          class="toolbar-btn"
+          onClick={handleRedo}
+          title="Redo (Ctrl+Shift+Z)"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 10H11a5 5 0 0 0-5 5v2M21 10l-5-5M21 10l-5 5"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider" />
+
       <div class="toolbar-group">
         <button
           class="toolbar-btn"
