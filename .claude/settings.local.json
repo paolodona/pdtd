@@ -52,7 +52,9 @@
       "Bash(pnpm build:*)",
       "Bash(npx vite build)",
       "Bash(pnpm tauri dev:*)",
-      "Bash(cargo check:*)"
+      "Bash(cargo check:*)",
+      "Bash(if not exist \"C:\\Users\\PaoloDona\\prj\\Other\\pdtd\\.agent_session\" mkdir \"C:\\Users\\PaoloDona\\prj\\Other\\pdtd\\.agent_session\")",
+      "Bash(git show:*)"
     ],
     "deny": [],
     "ask": []
