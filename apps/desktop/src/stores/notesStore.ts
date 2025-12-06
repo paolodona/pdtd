@@ -209,6 +209,21 @@ export function updateNoteTitle(noteId: string, title: string): void {
 }
 
 /**
+ * Update the updatedAt timestamp for a note in the store
+ * Called after content is saved to keep the UI in sync
+ */
+export function updateNoteTimestamp(noteId: string): void {
+  setNotesState(
+    produce((state) => {
+      const note = state.notes.find((n) => n.id === noteId);
+      if (note) {
+        note.updatedAt = Date.now();
+      }
+    })
+  );
+}
+
+/**
  * Toggle note starred status
  */
 export async function toggleNoteStarred(noteId: string): Promise<void> {

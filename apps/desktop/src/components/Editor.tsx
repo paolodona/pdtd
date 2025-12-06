@@ -2,7 +2,7 @@ import { Component, onMount, onCleanup, createEffect, createSignal, createMemo, 
 import { Editor as TipTapEditor } from '@tiptap/core';
 import Collaboration from '@tiptap/extension-collaboration';
 import { getEditorExtensions, editorStyles } from '@pdtodo/editor';
-import { notesStore, updateNoteTitle, flushPendingTitleUpdate, isScratchPad, SCRATCH_PAD_ID } from '../stores/notesStore';
+import { notesStore, updateNoteTitle, flushPendingTitleUpdate, updateNoteTimestamp, isScratchPad, SCRATCH_PAD_ID } from '../stores/notesStore';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-shell';
 import * as Y from 'yjs';
@@ -71,6 +71,8 @@ async function flushPendingContentSave(): Promise<void> {
         noteId,
         content: Array.from(content),
       });
+      // Update the timestamp in the store after successful save
+      updateNoteTimestamp(noteId);
     } catch (error) {
       console.error('Failed to flush content save:', error);
     }
@@ -127,6 +129,8 @@ export const Editor: Component<EditorProps> = (props) => {
               noteId,
               content: Array.from(content),
             });
+            // Update the timestamp in the store after successful save
+            updateNoteTimestamp(noteId);
           } catch (error) {
             console.error('Failed to save note content:', error);
           } finally {
