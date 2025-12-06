@@ -52,28 +52,44 @@ function getBlockAtPos(doc: ProseMirrorNode, pos: number): { node: ProseMirrorNo
 }
 
 /**
- * Find block at Y coordinate by using posAtCoords
+ * Find block at Y coordinate by checking actual DOM element bounds
+ * This is more reliable than posAtCoords for finding which line the mouse is on
  */
-function findBlockAtY(view: EditorView, x: number, y: number): { node: ProseMirrorNode; pos: number } | null {
-  const editorRect = view.dom.getBoundingClientRect();
+function findBlockAtY(view: EditorView, y: number): { node: ProseMirrorNode; pos: number } | null {
+  let result: { node: ProseMirrorNode; pos: number } | null = null;
 
-  // Use the actual X if within editor bounds, otherwise use left edge + offset
-  let useX = x;
-  if (x < editorRect.left) {
-    useX = editorRect.left + 30; // Just inside the left edge
-  } else if (x > editorRect.right) {
-    useX = editorRect.right - 10;
-  }
+  view.state.doc.descendants((node, pos) => {
+    if (result) return false; // Already found, stop iteration
 
-  // Try to get position at this coordinate
-  const pos = view.posAtCoords({ left: useX, top: y });
-  if (!pos) return null;
+    // Only check draggable block types
+    const isDraggable =
+      node.type.name === 'paragraph' ||
+      node.type.name === 'heading' ||
+      node.type.name === 'listItem' ||
+      node.type.name === 'taskItem';
 
-  // Use the existing getBlockAtPos function to find the block
-  const block = getBlockAtPos(view.state.doc, pos.pos);
-  if (!block) return null;
+    if (!isDraggable) return true; // Keep descending into non-draggable nodes
 
-  return { node: block.node, pos: block.pos };
+    try {
+      // Get the DOM element for this node
+      const dom = view.nodeDOM(pos);
+      if (dom && dom instanceof HTMLElement) {
+        const rect = dom.getBoundingClientRect();
+
+        // Check if Y is within this element's bounds
+        if (y >= rect.top && y <= rect.bottom) {
+          result = { node, pos };
+          return false; // Stop iteration
+        }
+      }
+    } catch {
+      // Node might not have a DOM representation
+    }
+
+    return true; // Continue to next node
+  });
+
+  return result;
 }
 
 /**
@@ -244,9 +260,8 @@ export const DragHandle = Extension.create({
                 }
               }
 
-              // Find block at mouse position - uses actual X when in editor,
-              // falls back to left edge when mouse is in the drag handle area
-              const block = findBlockAtY(view, event.clientX, event.clientY);
+              // Find block at mouse Y position by checking DOM element bounds
+              const block = findBlockAtY(view, event.clientY);
 
               if (block && state?.hoveredPos !== block.pos) {
                 view.dispatch(
