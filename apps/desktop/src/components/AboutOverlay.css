@@ -1,0 +1,214 @@
+.about-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.about-modal {
+  position: relative;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.about-close-btn {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.about-close-btn:hover {
+  background-color: var(--accent-danger);
+  color: white;
+}
+
+.about-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.about-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.about-version {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+.about-description {
+  margin-bottom: var(--space-5);
+}
+
+.about-description p {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  margin: 0 0 var(--space-3) 0;
+}
+
+.about-description p:last-child {
+  margin-bottom: 0;
+}
+
+.about-info-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.about-info-table tr {
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.about-info-table tr:last-child {
+  border-bottom: none;
+}
+
+.about-info-label {
+  padding: var(--space-3) var(--space-2) var(--space-3) 0;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+  width: 100px;
+  vertical-align: top;
+}
+
+.about-info-value {
+  padding: var(--space-3) 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.about-info-path {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  word-break: break-all;
+  color: var(--text-secondary);
+}
+
+.about-env-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.about-env-development {
+  background-color: rgba(251, 191, 36, 0.15);
+  color: var(--accent-warning);
+}
+
+.about-env-production {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.about-api-display {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.about-api-url {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.about-api-edit-btn {
+  padding: 2px 8px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.about-api-edit-btn:hover {
+  background-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.about-api-edit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.about-api-input {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+}
+
+.about-api-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.about-api-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.about-api-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.about-api-save {
+  background-color: var(--accent-primary);
+  color: white;
+}
+
+.about-api-save:hover {
+  background-color: #2563eb;
+}
+
+.about-api-cancel {
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.about-api-cancel:hover {
+  background-color: var(--border-primary);
+}

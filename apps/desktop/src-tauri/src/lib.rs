@@ -1,4 +1,5 @@
 mod commands;
+mod logging;
 mod storage;
 
 use tauri::Manager;
@@ -19,7 +20,12 @@ pub fn run() {
             // Ensure the Scratch Pad note exists
             storage.ensure_scratch_pad().expect("Failed to ensure scratch pad");
 
+            // Initialize logger
+            let logger = logging::AppLogger::new(1000);
+            logger.info("system", "Application started");
+
             app.manage(storage);
+            app.manage(logger);
 
             Ok(())
         })
@@ -36,6 +42,10 @@ pub fn run() {
             commands::duplicate_note,
             commands::search_notes,
             commands::fetch_url_title,
+            commands::get_app_info,
+            commands::get_logs,
+            commands::get_logs_since,
+            commands::add_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

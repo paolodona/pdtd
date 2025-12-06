@@ -4,11 +4,13 @@ import { DEFAULT_USER_SETTINGS } from '@pdtodo/types';
 
 interface SettingsState extends UserSettings {
   isLoaded: boolean;
+  apiServerUrl: string;
 }
 
 const [settingsState, setSettingsState] = createStore<SettingsState>({
   ...DEFAULT_USER_SETTINGS,
   isLoaded: false,
+  apiServerUrl: '',
 });
 
 export const settingsStore = {
@@ -24,7 +26,14 @@ export const settingsStore = {
   get isLoaded() {
     return settingsState.isLoaded;
   },
+  get apiServerUrl() {
+    return settingsState.apiServerUrl;
+  },
 };
+
+interface StoredSettings extends Partial<UserSettings> {
+  apiServerUrl?: string;
+}
 
 /**
  * Load settings from storage
@@ -34,11 +43,12 @@ export async function loadSettings(): Promise<void> {
     // In development without Tauri, use localStorage
     const stored = localStorage.getItem('pdtodo-settings');
     if (stored) {
-      const settings = JSON.parse(stored) as Partial<UserSettings>;
+      const settings = JSON.parse(stored) as StoredSettings;
       setSettingsState({
         fontSize: settings.fontSize ?? DEFAULT_USER_SETTINGS.fontSize,
         sidebarWidth: settings.sidebarWidth ?? DEFAULT_USER_SETTINGS.sidebarWidth,
         theme: settings.theme ?? DEFAULT_USER_SETTINGS.theme,
+        apiServerUrl: settings.apiServerUrl ?? '',
         isLoaded: true,
       });
     } else {
@@ -55,10 +65,11 @@ export async function loadSettings(): Promise<void> {
  */
 async function saveSettings(): Promise<void> {
   try {
-    const settings: UserSettings = {
+    const settings: StoredSettings = {
       fontSize: settingsState.fontSize,
       sidebarWidth: settingsState.sidebarWidth,
       theme: settingsState.theme,
+      apiServerUrl: settingsState.apiServerUrl,
     };
     localStorage.setItem('pdtodo-settings', JSON.stringify(settings));
   } catch (error) {
@@ -110,5 +121,13 @@ export function setSidebarWidth(width: number): void {
  */
 export function setTheme(theme: 'dark' | 'light' | 'system'): void {
   setSettingsState('theme', theme);
+  saveSettings();
+}
+
+/**
+ * Update API server URL
+ */
+export function setApiServerUrl(url: string): void {
+  setSettingsState('apiServerUrl', url);
   saveSettings();
 }

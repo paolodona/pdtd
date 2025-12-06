@@ -1,0 +1,136 @@
+.logs-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.logs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.logs-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.logs-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.logs-count {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+.logs-header-right {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.logs-btn {
+  padding: var(--space-1) var(--space-3);
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.logs-btn:hover {
+  background-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.logs-btn.active {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+}
+
+.logs-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.logs-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+}
+
+.log-entry {
+  display: flex;
+  gap: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.log-entry:hover {
+  background-color: var(--bg-secondary);
+}
+
+.log-time {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.log-level {
+  flex-shrink: 0;
+  width: 40px;
+  font-weight: 600;
+}
+
+.log-level-info {
+  color: var(--accent-primary);
+}
+
+.log-level-warn {
+  color: var(--accent-warning);
+}
+
+.log-level-error {
+  color: var(--accent-danger);
+}
+
+.log-category {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.log-message {
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.log-info .log-message {
+  color: var(--text-secondary);
+}
+
+.log-warn .log-message {
+  color: var(--accent-warning);
+}
+
+.log-error .log-message {
+  color: var(--accent-danger);
+}
