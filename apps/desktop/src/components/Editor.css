@@ -155,6 +155,18 @@
   background-color: var(--accent-hover);
 }
 
+.toolbar-btn:disabled,
+.toolbar-btn.is-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.toolbar-btn:disabled:hover,
+.toolbar-btn.is-disabled:hover {
+  background-color: transparent;
+  color: var(--text-secondary);
+}
+
 .toolbar-spacer {
   flex: 1;
 }

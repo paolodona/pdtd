@@ -234,6 +234,30 @@ export const Editor: Component<EditorProps> = (props) => {
         attributes: {
           class: 'editor-content',
         },
+        handleKeyDown: (_view, event) => {
+          // Intercept Ctrl+Z / Cmd+Z for undo
+          if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.shiftKey) {
+            event.preventDefault();
+            const um = undoManager();
+            if (um && um.canUndo()) {
+              um.undo();
+            }
+            return true;
+          }
+          // Intercept Ctrl+Shift+Z / Cmd+Shift+Z or Ctrl+Y / Cmd+Y for redo
+          if ((event.ctrlKey || event.metaKey) && (
+            (event.key === 'z' && event.shiftKey) ||
+            (event.key === 'y' && !event.shiftKey)
+          )) {
+            event.preventDefault();
+            const um = undoManager();
+            if (um && um.canRedo()) {
+              um.redo();
+            }
+            return true;
+          }
+          return false;
+        },
         handleClick: (_view, _pos, event) => {
           // Handle link clicks - open in external browser
           const target = event.target as HTMLElement;
@@ -289,7 +313,6 @@ export const Editor: Component<EditorProps> = (props) => {
       const newUndoManager = new Y.UndoManager(xmlFragment, {
         trackedOrigins: new Set([ySyncPluginKey]),
       });
-      console.log('Created UndoManager for note:', noteId, 'trackedOrigins:', ySyncPluginKey);
       setUndoManager(newUndoManager);
 
       // Initialize editor with the Yjs document
@@ -720,17 +743,23 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
     }
   };
 
+  // Check if undo is available (reactive)
+  const canUndo = () => {
+    props.editorStateVersion(); // Create reactive dependency
+    return props.undoManager()?.canUndo() ?? false;
+  };
+
+  // Check if redo is available (reactive)
+  const canRedo = () => {
+    props.editorStateVersion(); // Create reactive dependency
+    return props.undoManager()?.canRedo() ?? false;
+  };
+
   // Handle undo action using Yjs UndoManager
   const handleUndo = () => {
     const um = props.undoManager();
     const ed = getEditor();
-    console.log('handleUndo:', {
-      hasUndoManager: !!um,
-      hasEditor: !!ed,
-      canUndo: um?.canUndo(),
-      undoStackLength: um?.undoStack.length
-    });
-    if (um && ed) {
+    if (um && ed && um.canUndo()) {
       um.undo();
       ed.commands.focus();
     }
@@ -740,13 +769,7 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
   const handleRedo = () => {
     const um = props.undoManager();
     const ed = getEditor();
-    console.log('handleRedo:', {
-      hasUndoManager: !!um,
-      hasEditor: !!ed,
-      canRedo: um?.canRedo(),
-      redoStackLength: um?.redoStack.length
-    });
-    if (um && ed) {
+    if (um && ed && um.canRedo()) {
       um.redo();
       ed.commands.focus();
     }
@@ -757,7 +780,9 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
       <div class="toolbar-group">
         <button
           class="toolbar-btn"
+          classList={{ 'is-disabled': !canUndo() }}
           onClick={handleUndo}
+          disabled={!canUndo()}
           title="Undo (Ctrl+Z)"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -771,7 +796,9 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
         </button>
         <button
           class="toolbar-btn"
+          classList={{ 'is-disabled': !canRedo() }}
           onClick={handleRedo}
+          disabled={!canRedo()}
           title="Redo (Ctrl+Shift+Z)"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
