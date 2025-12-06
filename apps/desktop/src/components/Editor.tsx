@@ -1,5 +1,5 @@
 import { Component, onMount, onCleanup, createEffect, createSignal, createMemo, Accessor, on, Show } from 'solid-js';
-import { Editor as TipTapEditor, Extension } from '@tiptap/core';
+import { Editor as TipTapEditor } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import Collaboration from '@tiptap/extension-collaboration';
 import { getEditorExtensions, editorStyles } from '@pdtodo/editor';
@@ -7,7 +7,6 @@ import { notesStore, updateNoteTitle, flushPendingTitleUpdate, updateNoteTimesta
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-shell';
 import * as Y from 'yjs';
-import { yUndoPlugin, undoCommand, redoCommand } from 'y-prosemirror';
 import type { Note } from '@pdtodo/types';
 import './Editor.css';
 
@@ -22,18 +21,6 @@ import '@tiptap/extension-task-list';
 interface EditorProps {
   noteId: string;
 }
-
-// Create Yjs undo plugin instance once at module level to avoid keyed plugin conflicts
-// The plugin must be created once and reused, as ProseMirror doesn't allow multiple
-// instances of the same keyed plugin
-const yjsUndoPluginInstance = yUndoPlugin();
-
-const YjsUndo = Extension.create({
-  name: 'yjsUndo',
-  addProseMirrorPlugins() {
-    return [yjsUndoPluginInstance];
-  },
-});
 
 /**
  * Get ordinal suffix for a day number (1st, 2nd, 3rd, 4th, etc.)
@@ -99,6 +86,7 @@ export const Editor: Component<EditorProps> = (props) => {
   let updateHandler: (() => void) | undefined;
 
   const [editor, setEditor] = createSignal<TipTapEditor | undefined>(undefined);
+  const [undoManager, setUndoManager] = createSignal<Y.UndoManager | undefined>(undefined);
   const [title, setTitle] = createSignal('');
   const [isSaving, setIsSaving] = createSignal(false);
   const [isLoading, setIsLoading] = createSignal(false);
@@ -177,7 +165,6 @@ export const Editor: Component<EditorProps> = (props) => {
           document: doc,
           field: 'content',
         }),
-        YjsUndo,
       ],
       editorProps: {
         attributes: {
@@ -214,6 +201,13 @@ export const Editor: Component<EditorProps> = (props) => {
     try {
       const note = await invoke<Note>('get_note', { noteId });
 
+      // Destroy previous undo manager if any
+      const prevUndoManager = undoManager();
+      if (prevUndoManager) {
+        prevUndoManager.destroy();
+        setUndoManager(undefined);
+      }
+
       // Create new Yjs document
       ydoc = new Y.Doc();
 
@@ -224,6 +218,11 @@ export const Editor: Component<EditorProps> = (props) => {
           : new Uint8Array(note.content as number[]);
         Y.applyUpdate(ydoc, contentArray);
       }
+
+      // Create UndoManager for this document's content
+      const xmlFragment = ydoc.getXmlFragment('content');
+      const newUndoManager = new Y.UndoManager(xmlFragment);
+      setUndoManager(newUndoManager);
 
       // Initialize editor with the Yjs document
       initializeEditor(ydoc);
@@ -294,6 +293,10 @@ export const Editor: Component<EditorProps> = (props) => {
     if (currentEditor) {
       currentEditor.destroy();
     }
+    const currentUndoManager = undoManager();
+    if (currentUndoManager) {
+      currentUndoManager.destroy();
+    }
     if (ydoc && updateHandler) {
       ydoc.off('update', updateHandler);
     }
@@ -302,7 +305,7 @@ export const Editor: Component<EditorProps> = (props) => {
   return (
     <div class="editor">
       <div class="editor-header">
-        <EditorToolbar editor={editor} editorStateVersion={editorStateVersion} />
+        <EditorToolbar editor={editor} editorStateVersion={editorStateVersion} undoManager={undoManager} />
         <div class="editor-header-row">
           <div class="editor-title-container">
             <input
@@ -332,6 +335,7 @@ export const Editor: Component<EditorProps> = (props) => {
 interface EditorToolbarProps {
   editor: Accessor<TipTapEditor | undefined>;
   editorStateVersion: Accessor<number>;
+  undoManager: Accessor<Y.UndoManager | undefined>;
 }
 
 const EditorToolbar: Component<EditorToolbarProps> = (props) => {
@@ -534,20 +538,22 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
     }
   };
 
-  // Handle undo action using y-prosemirror
+  // Handle undo action using Yjs UndoManager
   const handleUndo = () => {
+    const um = props.undoManager();
     const ed = getEditor();
-    if (ed) {
-      undoCommand(ed.view.state, ed.view.dispatch, ed.view);
+    if (um && ed) {
+      um.undo();
       ed.commands.focus();
     }
   };
 
-  // Handle redo action using y-prosemirror
+  // Handle redo action using Yjs UndoManager
   const handleRedo = () => {
+    const um = props.undoManager();
     const ed = getEditor();
-    if (ed) {
-      redoCommand(ed.view.state, ed.view.dispatch, ed.view);
+    if (um && ed) {
+      um.redo();
       ed.commands.focus();
     }
   };
