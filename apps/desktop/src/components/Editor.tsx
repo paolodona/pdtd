@@ -1,4 +1,4 @@
-import { Component, onMount, onCleanup, createEffect, createSignal, createMemo, Accessor, on } from 'solid-js';
+import { Component, onMount, onCleanup, createEffect, createSignal, createMemo, Accessor, on, Show } from 'solid-js';
 import { Editor as TipTapEditor } from '@tiptap/core';
 import Collaboration from '@tiptap/extension-collaboration';
 import { getEditorExtensions, editorStyles } from '@pdtodo/editor';
@@ -330,6 +330,53 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
     return getEditor()?.isActive(name, attrs) ?? false;
   };
 
+  // Check if there are any checked task items in the document
+  const hasCheckedItems = () => {
+    // Read the signal to create a reactive dependency
+    props.editorStateVersion();
+    const ed = getEditor();
+    if (!ed) return false;
+
+    let hasChecked = false;
+    ed.state.doc.descendants((node) => {
+      if (node.type.name === 'taskItem' && node.attrs.checked === true) {
+        hasChecked = true;
+        return false; // Stop iteration
+      }
+      return true;
+    });
+    return hasChecked;
+  };
+
+  // Remove all checked task items from the document
+  const clearDoneItems = () => {
+    const ed = getEditor();
+    if (!ed) return;
+
+    const { state, dispatch } = ed.view;
+    let tr = state.tr;
+
+    // Collect positions of all checked task items
+    const nodesToDelete: { from: number; to: number }[] = [];
+
+    state.doc.descendants((node, pos) => {
+      if (node.type.name === 'taskItem' && node.attrs.checked === true) {
+        nodesToDelete.push({ from: pos, to: pos + node.nodeSize });
+      }
+      return true;
+    });
+
+    // Delete in reverse order to avoid position shifts
+    nodesToDelete.reverse().forEach(({ from, to }) => {
+      tr = tr.delete(from, to);
+    });
+
+    if (nodesToDelete.length > 0) {
+      dispatch(tr);
+      ed.commands.focus();
+    }
+  };
+
   const runCommand = (command: (ed: TipTapEditor) => boolean) => {
     const ed = getEditor();
     if (ed) {
@@ -505,6 +552,20 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
           </svg>
         </button>
       </div>
+
+      {/* Spacer pushes clear done button to the right */}
+      <div class="toolbar-spacer" />
+
+      {/* Clear done button - only visible when there are checked items */}
+      <Show when={hasCheckedItems()}>
+        <button
+          class="clear-done-btn"
+          onClick={clearDoneItems}
+          title="Remove all completed tasks"
+        >
+          clear done
+        </button>
+      </Show>
     </div>
   );
 };
