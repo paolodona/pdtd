@@ -65,6 +65,20 @@ export function getEditorExtensions(options?: { placeholder?: string }) {
           'Mod-Shift-7': () => this.editor.commands.toggleOrderedList(),
           'Mod-Shift-8': () => this.editor.commands.toggleBulletList(),
           'Mod-Shift-9': () => this.editor.commands.toggleTaskList(),
+          // Capture Tab/Shift-Tab to prevent default browser tab navigation
+          // These run after list-specific handlers but ensure we always prevent default
+          'Tab': () => {
+            // Try to indent list items, but always return true to prevent tab navigation
+            this.editor.commands.sinkListItem('listItem') ||
+              this.editor.commands.sinkListItem('taskItem');
+            return true;
+          },
+          'Shift-Tab': () => {
+            // Try to outdent list items, but always return true to prevent tab navigation
+            this.editor.commands.liftListItem('listItem') ||
+              this.editor.commands.liftListItem('taskItem');
+            return true;
+          },
         };
       },
     }),

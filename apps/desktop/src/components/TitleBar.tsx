@@ -3,12 +3,14 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { DropdownMenu, MenuItem } from './DropdownMenu';
 import { AboutOverlay } from './AboutOverlay';
+import { ShortcutsOverlay } from './ShortcutsOverlay';
 import './TitleBar.css';
 
 export const TitleBar: Component = () => {
   const appWindow = getCurrentWindow();
   const [menuOpen, setMenuOpen] = createSignal(false);
   const [showAbout, setShowAbout] = createSignal(false);
+  const [showShortcuts, setShowShortcuts] = createSignal(false);
 
   const handleMinimize = () => appWindow.minimize();
   const handleMaximize = () => appWindow.toggleMaximize();
@@ -63,6 +65,16 @@ export const TitleBar: Component = () => {
         </svg>
       ),
       onClick: () => setShowAbout(true),
+    },
+    {
+      label: 'Shortcuts',
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <rect x="2" y="4" width="20" height="16" rx="2" stroke-width="2" />
+          <path stroke-linecap="round" stroke-width="2" d="M6 8h2M10 8h2M14 8h4M6 12h4M12 12h2M16 12h2M8 16h8" />
+        </svg>
+      ),
+      onClick: () => setShowShortcuts(true),
     },
     {
       label: 'Logs',
@@ -122,6 +134,9 @@ export const TitleBar: Component = () => {
       </header>
       <Show when={showAbout()}>
         <AboutOverlay onClose={() => setShowAbout(false)} />
+      </Show>
+      <Show when={showShortcuts()}>
+        <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />
       </Show>
     </>
   );

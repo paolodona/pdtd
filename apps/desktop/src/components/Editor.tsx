@@ -1,5 +1,6 @@
-import { Component, onMount, onCleanup, createEffect, createSignal, createMemo, Accessor, on } from 'solid-js';
+import { Component, onMount, onCleanup, createEffect, createSignal, createMemo, Accessor, on, Show } from 'solid-js';
 import { Editor as TipTapEditor, Extension } from '@tiptap/core';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import Collaboration from '@tiptap/extension-collaboration';
 import { getEditorExtensions, editorStyles } from '@pdtodo/editor';
 import { notesStore, updateNoteTitle, flushPendingTitleUpdate, updateNoteTimestamp, isScratchPad, SCRATCH_PAD_ID } from '../stores/notesStore';
@@ -340,6 +341,187 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
     return getEditor()?.isActive(name, attrs) ?? false;
   };
 
+  // Check if there are any checked task items in the document
+  const hasCheckedItems = () => {
+    // Read the signal to create a reactive dependency
+    props.editorStateVersion();
+    const ed = getEditor();
+    if (!ed) return false;
+
+    let hasChecked = false;
+    ed.state.doc.descendants((node) => {
+      if (node.type.name === 'taskItem' && node.attrs.checked === true) {
+        hasChecked = true;
+        return false; // Stop iteration
+      }
+      return true;
+    });
+    return hasChecked;
+  };
+
+  // Remove all checked task items from the document
+  // Handles nested items: promotes unchecked children before deleting checked parents
+  const clearDoneItems = () => {
+    const ed = getEditor();
+    if (!ed) return;
+
+    const { state } = ed.view;
+    let tr = state.tr;
+
+    // Structure to hold info about checked items with their depth for sorting
+    interface CheckedItemInfo {
+      pos: number;
+      nodeSize: number;
+      depth: number;
+      uncheckedChildNodes: ProseMirrorNode[];
+    }
+
+    const checkedItems: CheckedItemInfo[] = [];
+
+    // First pass: collect all checked items and their unchecked nested children
+    // Also track depth for proper ordering (process deepest first)
+    state.doc.descendants((node, pos) => {
+      if (node.type.name === 'taskItem' && node.attrs.checked === true) {
+        const uncheckedChildNodes: ProseMirrorNode[] = [];
+
+        // Look for nested taskList within this taskItem
+        node.forEach((child) => {
+          if (child.type.name === 'taskList') {
+            // Collect unchecked children from the nested list
+            child.forEach((grandchild) => {
+              if (grandchild.type.name === 'taskItem' && grandchild.attrs.checked !== true) {
+                uncheckedChildNodes.push(grandchild);
+              }
+            });
+          }
+        });
+
+        // Calculate depth by resolving position
+        const $pos = state.doc.resolve(pos);
+        const depth = $pos.depth;
+
+        checkedItems.push({
+          pos,
+          nodeSize: node.nodeSize,
+          depth,
+          uncheckedChildNodes,
+        });
+      }
+      return true;
+    });
+
+    // Sort by depth (deepest first), then by position (end first)
+    // This ensures we process nested items before their parents
+    checkedItems.sort((a, b) => {
+      if (b.depth !== a.depth) return b.depth - a.depth;
+      return b.pos - a.pos;
+    });
+
+    // Track which positions have been processed to avoid double-processing
+    const processedRanges: { from: number; to: number }[] = [];
+
+    for (const item of checkedItems) {
+      // Skip if this item was already deleted as part of a parent
+      const originalFrom = item.pos;
+      const originalTo = item.pos + item.nodeSize;
+      const alreadyProcessed = processedRanges.some(
+        (range) => originalFrom >= range.from && originalTo <= range.to
+      );
+      if (alreadyProcessed) continue;
+
+      // Map position through any previous changes
+      const mappedPos = tr.mapping.map(item.pos);
+      const mappedEnd = tr.mapping.map(item.pos + item.nodeSize);
+
+      if (item.uncheckedChildNodes.length > 0) {
+        // We need to insert unchecked children as siblings after this item
+        const $pos = tr.doc.resolve(mappedPos);
+
+        // Find the taskList parent (should be immediate parent of taskItem)
+        let taskListDepth = -1;
+        for (let d = $pos.depth; d >= 0; d--) {
+          if ($pos.node(d).type.name === 'taskList') {
+            taskListDepth = d;
+            break;
+          }
+        }
+
+        if (taskListDepth >= 0) {
+          // Insert unchecked children after the current taskItem position
+          const insertPos = mappedEnd;
+
+          // Insert each child as a sibling
+          let insertOffset = 0;
+          for (const childNode of item.uncheckedChildNodes) {
+            tr = tr.insert(insertPos + insertOffset, childNode);
+            insertOffset += childNode.nodeSize;
+          }
+        }
+      }
+
+      // Delete the checked item using deleteRange for more reliable deletion
+      const deleteFrom = tr.mapping.map(item.pos);
+      const deleteTo = tr.mapping.map(item.pos + item.nodeSize);
+
+      // Use replaceWith to replace the node with nothing (more reliable than delete)
+      tr = tr.replaceWith(deleteFrom, deleteTo, []);
+
+      // Track this range as processed
+      processedRanges.push({ from: originalFrom, to: originalTo });
+    }
+
+    // Clean up empty or effectively empty taskLists
+    // Run multiple passes until no more changes
+    let cleanupNeeded = true;
+    while (cleanupNeeded) {
+      cleanupNeeded = false;
+      const listsToRemove: { from: number; to: number }[] = [];
+
+      tr.doc.descendants((node, pos) => {
+        if (node.type.name === 'taskList') {
+          // Check if the list is empty or only contains empty task items
+          let hasContent = false;
+          node.forEach((child) => {
+            if (child.type.name === 'taskItem') {
+              // Check if this taskItem has any real content
+              let itemHasContent = false;
+              child.forEach((grandchild) => {
+                if (grandchild.type.name === 'paragraph') {
+                  // Check if paragraph has text content
+                  if (grandchild.textContent.trim().length > 0) {
+                    itemHasContent = true;
+                  }
+                } else if (grandchild.type.name === 'taskList') {
+                  // Has nested list, consider it as having content
+                  itemHasContent = true;
+                }
+              });
+              if (itemHasContent) {
+                hasContent = true;
+              }
+            }
+          });
+
+          if (!hasContent) {
+            listsToRemove.push({ from: pos, to: pos + node.nodeSize });
+            cleanupNeeded = true;
+          }
+        }
+        return true;
+      });
+
+      // Delete empty lists in reverse order
+      listsToRemove.reverse().forEach(({ from, to }) => {
+        tr = tr.replaceWith(from, to, []);
+      });
+    }
+
+    if (tr.docChanged) {
+      ed.view.dispatch(tr);
+      ed.commands.focus();
+    }
+  };
+
   const runCommand = (command: (ed: TipTapEditor) => boolean) => {
     const ed = getEditor();
     if (ed) {
@@ -566,6 +748,20 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
           </svg>
         </button>
       </div>
+
+      {/* Spacer pushes clear done button to the right */}
+      <div class="toolbar-spacer" />
+
+      {/* Clear done button - only visible when there are checked items */}
+      <Show when={hasCheckedItems()}>
+        <button
+          class="clear-done-btn"
+          onClick={clearDoneItems}
+          title="Remove all completed tasks"
+        >
+          clear done
+        </button>
+      </Show>
     </div>
   );
 };
