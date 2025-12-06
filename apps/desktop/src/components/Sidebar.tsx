@@ -18,12 +18,29 @@ import { SearchInput } from './SearchInput';
 import './Sidebar.css';
 
 export const Sidebar: Component = () => {
+  const searchQuery = () => notesStore.searchQuery;
 
   const scratchPad = createMemo(() => notesStore.scratchPad);
-  const starredNotes = createMemo(() => notesStore.starredNotes);
-  const activeNotes = createMemo(() =>
-    notesStore.filteredNotes.sort((a, b) => b.updatedAt - a.updatedAt)
-  );
+
+  // Filter starred notes by search query
+  const starredNotes = createMemo(() => {
+    const query = searchQuery().toLowerCase();
+    const starred = notesStore.starredNotes;
+    if (!query) return starred;
+    return starred.filter((n) => n.title.toLowerCase().includes(query));
+  });
+
+  // Get non-starred active notes, filtered by search query
+  const activeNotes = createMemo(() => {
+    const query = searchQuery().toLowerCase();
+    // Exclude starred notes from "All Notes" section
+    const nonStarred = notesStore.activeNotes.filter((n) => !n.starred);
+    const filtered = query
+      ? nonStarred.filter((n) => n.title.toLowerCase().includes(query))
+      : nonStarred;
+    return filtered.sort((a, b) => b.updatedAt - a.updatedAt);
+  });
+
   const trashedNotes = createMemo(() => notesStore.trashedNotes);
 
   const handleNewNote = async () => {
@@ -85,6 +102,7 @@ export const Sidebar: Component = () => {
                     onSelect={() => selectNote(note.id)}
                     onToggleStar={() => toggleNoteStarred(note.id)}
                     onDelete={() => deleteNote(note.id)}
+                    searchQuery={searchQuery()}
                   />
                 )}
               </For>
@@ -121,6 +139,7 @@ export const Sidebar: Component = () => {
                       onSelect={() => selectNote(note.id)}
                       onToggleStar={() => toggleNoteStarred(note.id)}
                       onDelete={() => deleteNote(note.id)}
+                      searchQuery={searchQuery()}
                     />
                   )}
                 </For>

@@ -1,4 +1,4 @@
-import { Component, Show, createSignal } from 'solid-js';
+import { Component, Show, createSignal, For, createMemo } from 'solid-js';
 import type { NoteMeta } from '@pdtodo/types';
 import './NoteItem.css';
 
@@ -9,10 +9,55 @@ interface NoteItemProps {
   onToggleStar: () => void;
   onDelete: () => void;
   isTrash?: boolean;
+  searchQuery?: string;
+}
+
+interface TitlePart {
+  text: string;
+  isMatch: boolean;
+}
+
+/**
+ * Split a title into parts, marking which parts match the search query
+ */
+function getHighlightedParts(title: string, query: string): TitlePart[] {
+  if (!query) {
+    return [{ text: title, isMatch: false }];
+  }
+
+  const lowerTitle = title.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  const parts: TitlePart[] = [];
+  let lastIndex = 0;
+
+  let index = lowerTitle.indexOf(lowerQuery);
+  while (index !== -1) {
+    // Add non-matching part before the match
+    if (index > lastIndex) {
+      parts.push({ text: title.slice(lastIndex, index), isMatch: false });
+    }
+    // Add the matching part (preserve original case)
+    parts.push({ text: title.slice(index, index + query.length), isMatch: true });
+    lastIndex = index + query.length;
+    index = lowerTitle.indexOf(lowerQuery, lastIndex);
+  }
+
+  // Add remaining non-matching part
+  if (lastIndex < title.length) {
+    parts.push({ text: title.slice(lastIndex), isMatch: false });
+  }
+
+  return parts.length > 0 ? parts : [{ text: title, isMatch: false }];
 }
 
 export const NoteItem: Component<NoteItemProps> = (props) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = createSignal(false);
+
+  // Compute highlighted title parts
+  const titleParts = createMemo(() => {
+    const title = props.note.title || 'Untitled';
+    return getHighlightedParts(title, props.searchQuery || '');
+  });
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -67,7 +112,15 @@ export const NoteItem: Component<NoteItemProps> = (props) => {
             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
           />
         </svg>
-        <span class="note-title">{props.note.title || 'Untitled'}</span>
+        <span class="note-title">
+          <For each={titleParts()}>
+            {(part) => (
+              <Show when={part.isMatch} fallback={<>{part.text}</>}>
+                <mark class="search-highlight">{part.text}</mark>
+              </Show>
+            )}
+          </For>
+        </span>
         <Show when={!props.isTrash}>
           <div class="note-actions">
             <button

@@ -51,6 +51,14 @@
   line-height: 1.3;
 }
 
+/* Search highlight styling */
+.note-title .search-highlight {
+  background-color: rgba(250, 204, 21, 0.3);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
 .note-actions {
   display: flex;
   align-items: center;
