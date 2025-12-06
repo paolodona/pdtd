@@ -13,6 +13,7 @@
     "core:window:allow-is-maximized",
     "core:window:allow-create",
     "core:webview:allow-create-webview-window",
-    "store:default"
+    "store:default",
+    "shell:allow-open"
   ]
 }

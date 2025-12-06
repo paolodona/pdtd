@@ -87,6 +87,7 @@ export const Editor: Component<EditorProps> = (props) => {
   let updateHandler: (() => void) | undefined;
   // Store saved selection position for focus restoration
   let savedSelection: { from: number; to: number } | null = null;
+  let tooltipHideTimeout: ReturnType<typeof setTimeout> | undefined;
 
   const [editor, setEditor] = createSignal<TipTapEditor | undefined>(undefined);
   const [title, setTitle] = createSignal('');
@@ -122,6 +123,30 @@ export const Editor: Component<EditorProps> = (props) => {
   onMount(() => {
     registerEditorFocus(saveEditorSelection, restoreEditorSelection);
   });
+
+  // Link tooltip state
+  const [linkTooltip, setLinkTooltip] = createSignal<{
+    visible: boolean;
+    url: string;
+    x: number;
+    y: number;
+  }>({ visible: false, url: '', x: 0, y: 0 });
+
+  // Helper to schedule tooltip hide with delay
+  const scheduleTooltipHide = () => {
+    if (tooltipHideTimeout) clearTimeout(tooltipHideTimeout);
+    tooltipHideTimeout = setTimeout(() => {
+      setLinkTooltip((prev) => ({ ...prev, visible: false }));
+    }, 150); // Small delay to allow moving to tooltip
+  };
+
+  // Helper to cancel scheduled hide
+  const cancelTooltipHide = () => {
+    if (tooltipHideTimeout) {
+      clearTimeout(tooltipHideTimeout);
+      tooltipHideTimeout = undefined;
+    }
+  };
 
   // Get the last updated timestamp from the note
   const lastUpdated = createMemo(() => {
@@ -301,8 +326,76 @@ export const Editor: Component<EditorProps> = (props) => {
     }
   };
 
+  // Handle mouse move over editor to detect link hover
+  const handleEditorMouseMove = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const link = target.closest('a');
+
+    if (link && link.href) {
+      // Cancel any pending hide when hovering a link
+      cancelTooltipHide();
+
+      // Position tooltip above the link
+      const rect = link.getBoundingClientRect();
+
+      // Calculate position relative to viewport
+      const x = rect.left;
+      const y = rect.top - 8; // Position above the link with small gap
+
+      setLinkTooltip({
+        visible: true,
+        url: link.href,
+        x,
+        y,
+      });
+    } else {
+      // Schedule hide with delay when not hovering a link
+      scheduleTooltipHide();
+    }
+  };
+
+  // Handle mouse leave from editor
+  const handleEditorMouseLeave = () => {
+    // Schedule hide with delay to allow moving to tooltip
+    scheduleTooltipHide();
+  };
+
+  // Handle mouse enter on tooltip (cancel hide)
+  const handleTooltipMouseEnter = () => {
+    cancelTooltipHide();
+  };
+
+  // Handle mouse leave from tooltip
+  const handleTooltipMouseLeave = () => {
+    setLinkTooltip((prev) => ({ ...prev, visible: false }));
+  };
+
+  // Handle click on editor to open links (Ctrl/Cmd + click)
+  const handleEditorClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const link = target.closest('a');
+
+    if (link && link.href && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      e.stopPropagation();
+      open(link.href).catch(console.error);
+    }
+  };
+
+  // Open link from tooltip
+  const handleTooltipLinkClick = () => {
+    const { url } = linkTooltip();
+    if (url) {
+      open(url).catch(console.error);
+      setLinkTooltip((prev) => ({ ...prev, visible: false }));
+    }
+  };
+
   // Cleanup - save content before destroying
   onCleanup(async () => {
+    // Clear tooltip timeout
+    cancelTooltipHide();
+
     // Unregister focus callbacks
     unregisterEditorFocus();
 
@@ -342,9 +435,52 @@ export const Editor: Component<EditorProps> = (props) => {
           </div>
         </div>
       </div>
-      <div class="editor-body">
+      <div
+        class="editor-body"
+        onMouseMove={handleEditorMouseMove}
+        onMouseLeave={handleEditorMouseLeave}
+        onClick={handleEditorClick}
+      >
         <div ref={editorRef} class="editor-content-wrapper" />
       </div>
+
+      {/* Link tooltip */}
+      <Show when={linkTooltip().visible}>
+        <div
+          class="link-tooltip"
+          style={{
+            position: 'fixed',
+            left: `${linkTooltip().x}px`,
+            top: `${linkTooltip().y}px`,
+            transform: 'translateY(-100%)',
+          }}
+          onMouseEnter={handleTooltipMouseEnter}
+          onMouseLeave={handleTooltipMouseLeave}
+        >
+          <button
+            class="link-tooltip-btn"
+            onClick={handleTooltipLinkClick}
+            title="Open link"
+          >
+            <svg
+              class="link-tooltip-icon"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M2 12h20" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
+            <span class="link-tooltip-url">{linkTooltip().url}</span>
+          </button>
+        </div>
+      </Show>
     </div>
   );
 };

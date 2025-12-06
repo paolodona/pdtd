@@ -339,3 +339,40 @@
   border-top: 1px solid var(--border-primary);
   margin: var(--space-6) 0;
 }
+
+/* Link tooltip */
+.link-tooltip {
+  z-index: 1000;
+  pointer-events: auto;
+}
+
+.link-tooltip-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  max-width: 320px;
+  transition: background-color 0.15s;
+}
+
+.link-tooltip-btn:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.link-tooltip-icon {
+  flex-shrink: 0;
+  color: var(--accent-primary);
+}
+
+.link-tooltip-url {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
