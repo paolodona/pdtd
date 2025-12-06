@@ -1,5 +1,6 @@
 import { Component, onMount, onCleanup, createEffect, createSignal, createMemo, Accessor, on, Show } from 'solid-js';
 import { Editor as TipTapEditor } from '@tiptap/core';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import Collaboration from '@tiptap/extension-collaboration';
 import { getEditorExtensions, editorStyles } from '@pdtodo/editor';
 import { notesStore, updateNoteTitle, flushPendingTitleUpdate, updateNoteTimestamp, isScratchPad, SCRATCH_PAD_ID } from '../stores/notesStore';
@@ -349,30 +350,112 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
   };
 
   // Remove all checked task items from the document
+  // Handles nested items: promotes unchecked children before deleting checked parents
   const clearDoneItems = () => {
     const ed = getEditor();
     if (!ed) return;
 
-    const { state, dispatch } = ed.view;
+    const { state } = ed.view;
     let tr = state.tr;
 
-    // Collect positions of all checked task items
-    const nodesToDelete: { from: number; to: number }[] = [];
+    // Structure to hold info about checked items
+    interface CheckedItemInfo {
+      pos: number;
+      nodeSize: number;
+      uncheckedChildNodes: ProseMirrorNode[];
+    }
 
+    const checkedItems: CheckedItemInfo[] = [];
+
+    // First pass: collect all checked items and their unchecked nested children
     state.doc.descendants((node, pos) => {
       if (node.type.name === 'taskItem' && node.attrs.checked === true) {
-        nodesToDelete.push({ from: pos, to: pos + node.nodeSize });
+        const uncheckedChildNodes: ProseMirrorNode[] = [];
+
+        // Look for nested taskList within this taskItem
+        node.forEach((child) => {
+          if (child.type.name === 'taskList') {
+            // Collect unchecked children from the nested list
+            child.forEach((grandchild) => {
+              if (grandchild.type.name === 'taskItem' && grandchild.attrs.checked !== true) {
+                uncheckedChildNodes.push(grandchild);
+              }
+            });
+          }
+        });
+
+        checkedItems.push({
+          pos,
+          nodeSize: node.nodeSize,
+          uncheckedChildNodes,
+        });
       }
       return true;
     });
 
-    // Delete in reverse order to avoid position shifts
-    nodesToDelete.reverse().forEach(({ from, to }) => {
-      tr = tr.delete(from, to);
-    });
+    // Process in reverse order (from end to start) to maintain position validity
+    checkedItems.reverse();
 
-    if (nodesToDelete.length > 0) {
-      dispatch(tr);
+    for (const item of checkedItems) {
+      // Map position through any previous changes
+      const mappedPos = tr.mapping.map(item.pos);
+      const mappedEnd = tr.mapping.map(item.pos + item.nodeSize);
+
+      if (item.uncheckedChildNodes.length > 0) {
+        // We need to insert unchecked children as siblings after this item
+        // First, find the parent taskList to insert into
+        const $pos = tr.doc.resolve(mappedPos);
+
+        // Find the taskList parent (should be immediate parent of taskItem)
+        let taskListDepth = -1;
+        for (let d = $pos.depth; d >= 0; d--) {
+          if ($pos.node(d).type.name === 'taskList') {
+            taskListDepth = d;
+            break;
+          }
+        }
+
+        if (taskListDepth >= 0) {
+          // Insert unchecked children after the current taskItem position
+          const insertPos = mappedEnd;
+
+          // Insert each child as a sibling
+          let insertOffset = 0;
+          for (const childNode of item.uncheckedChildNodes) {
+            tr = tr.insert(insertPos + insertOffset, childNode);
+            insertOffset += childNode.nodeSize;
+          }
+        }
+      }
+
+      // Now delete the checked item (re-map position after potential inserts)
+      const deleteFrom = tr.mapping.map(item.pos);
+      const deleteTo = tr.mapping.map(item.pos + item.nodeSize);
+      tr = tr.delete(deleteFrom, deleteTo);
+    }
+
+    // Clean up empty taskLists that might remain
+    let hasEmptyLists = true;
+    while (hasEmptyLists) {
+      hasEmptyLists = false;
+      const emptyLists: { from: number; to: number }[] = [];
+
+      tr.doc.descendants((node, pos) => {
+        if (node.type.name === 'taskList' && node.childCount === 0) {
+          emptyLists.push({ from: pos, to: pos + node.nodeSize });
+          hasEmptyLists = true;
+        }
+        return true;
+      });
+
+      // Delete empty lists in reverse order
+      emptyLists.reverse().forEach(({ from, to }) => {
+        tr = tr.delete(from, to);
+      });
+    }
+
+    if (tr.docChanged) {
+      ed.view.dispatch(tr);
       ed.commands.focus();
     }
   };
