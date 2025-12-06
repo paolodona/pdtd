@@ -2,6 +2,7 @@ import TaskItem from '@tiptap/extension-task-item';
 
 /**
  * Extended TaskItem with strikethrough styling for completed tasks
+ * and proper Enter key behavior (creates new task item instead of paragraph)
  */
 export const TaskItemExtended = TaskItem.extend({
   addAttributes() {
@@ -19,6 +20,19 @@ export const TaskItemExtended = TaskItem.extend({
 
   addKeyboardShortcuts() {
     return {
+      // Enter creates a new task item instead of a paragraph inside the current item
+      'Enter': () => {
+        return this.editor.commands.splitListItem('taskItem');
+      },
+      // Tab indents the task item
+      'Tab': () => {
+        return this.editor.commands.sinkListItem('taskItem');
+      },
+      // Shift+Tab outdents the task item
+      'Shift-Tab': () => {
+        return this.editor.commands.liftListItem('taskItem');
+      },
+      // Mod+Enter toggles the checkbox
       'Mod-Enter': () => {
         // Toggle checkbox on current task item
         const { state, dispatch } = this.editor.view;

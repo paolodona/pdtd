@@ -6,6 +6,7 @@ import {
   toggleNoteStarred,
   deleteNote,
   setSearchQuery,
+  SCRATCH_PAD_ID,
 } from '../stores/notesStore';
 import { settingsStore } from '../stores/settingsStore';
 import { NoteItem } from './NoteItem';
@@ -15,6 +16,7 @@ import './Sidebar.css';
 export const Sidebar: Component = () => {
   const [trashExpanded, setTrashExpanded] = createSignal(false);
 
+  const scratchPad = createMemo(() => notesStore.scratchPad);
   const starredNotes = createMemo(() => notesStore.starredNotes);
   const activeNotes = createMemo(() =>
     notesStore.filteredNotes.sort((a, b) => b.updatedAt - a.updatedAt)
@@ -46,6 +48,28 @@ export const Sidebar: Component = () => {
       </div>
 
       <div class="sidebar-content">
+        <Show when={scratchPad()}>
+          <section class="sidebar-section">
+            <div class="note-list">
+              <div
+                class="scratch-pad-item"
+                classList={{ 'is-selected': scratchPad()!.id === notesStore.selectedNoteId }}
+                onClick={() => selectNote(SCRATCH_PAD_ID)}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="scratch-pad-icon">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                <span class="scratch-pad-title">Scratch Pad</span>
+              </div>
+            </div>
+          </section>
+        </Show>
+
         <Show when={starredNotes().length > 0}>
           <section class="sidebar-section">
             <h3 class="section-title">Shortcuts</h3>

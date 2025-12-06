@@ -9,6 +9,13 @@ interface NotesState {
   isLoading: boolean;
 }
 
+// Scratch Pad has a fixed ID
+export const SCRATCH_PAD_ID = 'scratch-pad';
+
+export function isScratchPad(noteId: string): boolean {
+  return noteId === SCRATCH_PAD_ID;
+}
+
 const [notesState, setNotesState] = createStore<NotesState>({
   notes: [],
   selectedNoteId: null,
@@ -57,20 +64,23 @@ export const notesStore = {
   get isLoading() {
     return notesState.isLoading;
   },
+  get scratchPad() {
+    return notesState.notes.find((n) => n.id === SCRATCH_PAD_ID) ?? null;
+  },
   get starredNotes() {
-    return notesState.notes.filter((n) => n.starred && !n.deletedAt);
+    return notesState.notes.filter((n) => n.starred && !n.deletedAt && !isScratchPad(n.id));
   },
   get activeNotes() {
-    return notesState.notes.filter((n) => !n.deletedAt);
+    return notesState.notes.filter((n) => !n.deletedAt && !isScratchPad(n.id));
   },
   get trashedNotes() {
-    return notesState.notes.filter((n) => n.deletedAt !== null);
+    return notesState.notes.filter((n) => n.deletedAt !== null && !isScratchPad(n.id));
   },
   get filteredNotes() {
     const query = notesState.searchQuery.toLowerCase();
-    if (!query) return notesState.notes.filter((n) => !n.deletedAt);
+    if (!query) return notesState.notes.filter((n) => !n.deletedAt && !isScratchPad(n.id));
     return notesState.notes.filter(
-      (n) => !n.deletedAt && n.title.toLowerCase().includes(query)
+      (n) => !n.deletedAt && !isScratchPad(n.id) && n.title.toLowerCase().includes(query)
     );
   },
 };

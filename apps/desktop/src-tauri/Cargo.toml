@@ -25,6 +25,8 @@ chrono = { version = "0.4", features = ["serde"] }
 thiserror = "1"
 tokio = { version = "1", features = ["full"] }
 dirs = "5"
+reqwest = { version = "0.11", features = ["native-tls"], default-features = false }
+tauri-plugin-shell = "2"
 
 [features]
 default = ["custom-protocol"]

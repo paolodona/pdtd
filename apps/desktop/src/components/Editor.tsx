@@ -1,9 +1,10 @@
-import { Component, onMount, onCleanup, createEffect, createSignal, Accessor, on } from 'solid-js';
+import { Component, onMount, onCleanup, createEffect, createSignal, createMemo, Accessor, on } from 'solid-js';
 import { Editor as TipTapEditor } from '@tiptap/core';
 import Collaboration from '@tiptap/extension-collaboration';
 import { getEditorExtensions, editorStyles } from '@pdtodo/editor';
-import { notesStore, updateNoteTitle, flushPendingTitleUpdate } from '../stores/notesStore';
+import { notesStore, updateNoteTitle, flushPendingTitleUpdate, isScratchPad, SCRATCH_PAD_ID } from '../stores/notesStore';
 import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-shell';
 import * as Y from 'yjs';
 import type { Note } from '@pdtodo/types';
 import './Editor.css';
@@ -18,6 +19,35 @@ import '@tiptap/extension-task-list';
 
 interface EditorProps {
   noteId: string;
+}
+
+/**
+ * Get ordinal suffix for a day number (1st, 2nd, 3rd, 4th, etc.)
+ */
+function getOrdinalSuffix(day: number): string {
+  if (day > 3 && day < 21) return 'th';
+  switch (day % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
+}
+
+/**
+ * Format a timestamp as "25th of January 2026 at 14:32"
+ */
+function formatLastUpdated(timestamp: number): string {
+  const date = new Date(timestamp);
+  const day = date.getDate();
+  const suffix = getOrdinalSuffix(day);
+  const month = date.toLocaleString('en-US', { month: 'long' });
+  const year = date.getFullYear();
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  return `${day}${suffix} of ${month} ${year} at ${hour12}:${minutes} ${ampm}`;
 }
 
 // Track pending content saves globally for flush mechanism
@@ -56,6 +86,12 @@ export const Editor: Component<EditorProps> = (props) => {
   const [title, setTitle] = createSignal('');
   const [isSaving, setIsSaving] = createSignal(false);
   const [isLoading, setIsLoading] = createSignal(false);
+
+  // Get the last updated timestamp from the note
+  const lastUpdated = createMemo(() => {
+    const note = notesStore.notes.find((n) => n.id === props.noteId);
+    return note ? formatLastUpdated(note.updatedAt) : '';
+  });
 
   // Inject editor styles
   onMount(() => {
@@ -125,6 +161,17 @@ export const Editor: Component<EditorProps> = (props) => {
       editorProps: {
         attributes: {
           class: 'editor-content',
+        },
+        handleClick: (_view, _pos, event) => {
+          // Handle link clicks - open in external browser
+          const target = event.target as HTMLElement;
+          const link = target.closest('a');
+          if (link && link.href) {
+            event.preventDefault();
+            open(link.href).catch(console.error);
+            return true;
+          }
+          return false;
         },
       },
     });
@@ -227,23 +274,29 @@ export const Editor: Component<EditorProps> = (props) => {
   return (
     <div class="editor">
       <div class="editor-header">
-        <input
-          type="text"
-          class="editor-title"
-          value={title()}
-          onInput={handleTitleChange}
-          onKeyDown={handleTitleKeyDown}
-          placeholder="Note title"
-        />
-        <div class="editor-status">
-          {isLoading() && <span class="loading-indicator">Loading...</span>}
-          {isSaving() && <span class="saving-indicator">Saving...</span>}
+        <EditorToolbar editor={editor} />
+        <div class="editor-header-row">
+          <div class="editor-title-container">
+            <input
+              type="text"
+              class="editor-title"
+              value={title()}
+              onInput={handleTitleChange}
+              onKeyDown={handleTitleKeyDown}
+              placeholder="Note title"
+              readOnly={isScratchPad(props.noteId)}
+            />
+            <span class="editor-timestamp">Last updated: {lastUpdated()}</span>
+          </div>
+          <div class="editor-status">
+            {isLoading() && <span class="loading-indicator">Loading...</span>}
+            {isSaving() && <span class="saving-indicator">Saving...</span>}
+          </div>
         </div>
       </div>
       <div class="editor-body">
         <div ref={editorRef} class="editor-content-wrapper" />
       </div>
-      <EditorToolbar editor={editor} />
     </div>
   );
 };
@@ -362,6 +415,74 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
               stroke-linejoin="round"
               stroke-width="2"
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider" />
+
+      <div class="toolbar-group">
+        <button
+          class="toolbar-btn"
+          onClick={() => runCommand((ed) => ed.chain().sinkListItem('listItem').run() || ed.chain().sinkListItem('taskItem').run())}
+          title="Indent (Tab)"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 5l7 7-7 7M5 5v14"
+            />
+          </svg>
+        </button>
+        <button
+          class="toolbar-btn"
+          onClick={() => runCommand((ed) => ed.chain().liftListItem('listItem').run() || ed.chain().liftListItem('taskItem').run())}
+          title="Outdent (Shift+Tab)"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M11 19l-7-7 7-7M19 5v14"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider" />
+
+      <div class="toolbar-group">
+        <button
+          class="toolbar-btn"
+          classList={{ 'is-active': isActive('link') }}
+          onClick={() => {
+            const ed = getEditor();
+            if (!ed) return;
+
+            if (ed.isActive('link')) {
+              // Remove link
+              ed.chain().unsetLink().run();
+            } else {
+              // Prompt for URL
+              const url = window.prompt('Enter URL:');
+              if (url) {
+                ed.chain().setLink({ href: url }).run();
+              }
+            }
+            ed.commands.focus();
+          }}
+          title="Add/Edit Link (Ctrl+K)"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
             />
           </svg>
         </button>

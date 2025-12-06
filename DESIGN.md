@@ -12,8 +12,8 @@
   * Text primary: off-white `#F9FAFB`
   * Text secondary: muted gray `#9CA3AF`
   * Borders/dividers: subtle gray `#27272f` (low contrast)
-  * Checklist unchecked box: medium gray outline
-  * Checklist checked box: filled accent blue with white check
+  * Checklist unchecked box: medium gray outline (`#6B7280`)
+  * Checklist checked box: filled green (`#22C55E`) with white checkmark
 
 * **Visual language**
 
@@ -37,20 +37,22 @@ Use a **three-panel app layout**:
 2. **Left sidebar**
 
    * Width: ~260–300px fixed.
-   * Sections:
+   * Sections (in order):
 
-     * Search bar at top.
-     * “Primary action” button (e.g. **+ Note**) below search, full width.
-     * “Shortcuts” list with small icons and labels (e.g. “AI Strategy”, “Recruitment”…).
-     * “Recent notes” list with smaller items.
-     * Bottom: secondary navigation (Trash, Settings, etc.).
+     * Search bar at top with + New Note button.
+     * **Scratch Pad**: A permanent, always-available note for quick notes (cannot be deleted or favorited).
+     * "Shortcuts" list: starred/favorited notes with yellow star icons.
+     * "All Notes" list: all active notes sorted by last updated.
+     * "Trash" section (collapsible): soft-deleted notes.
    * Scrollable independently from the main content.
 
 3. **Right pane (note detail)**
 
    * Fills remaining horizontal space.
-   * Top: compact toolbar for the note.
-   * Body: full-height editor area with padding around content.
+   * **Header area** (no border, blends with body):
+     * Toolbar row: formatting buttons (Bold, Underline, H1/H2/H3, lists, indent/outdent, link).
+     * Title row: large editable note title + "Last updated" timestamp.
+   * Body: full-height editor area with 24px padding around content.
    * Scrollable independently of left panes.
 
 ---
@@ -102,26 +104,29 @@ Use a **three-panel app layout**:
 
 ### Header / Toolbar
 
-* Horizontal toolbar aligned to the top edge.
-* Elements, left to right:
-
-  * Back navigation (if applicable).
-  * Breadcrumb or notebook path (e.g. “1 Staycity > TODO”).
-  * Icons: AI assistant, share, info, undo/redo.
-  * Formatting options on the right: text style dropdown, font selector, font size, color, “More” menu (for extra formatting).
-* All icons are monochrome outline style; active ones use accent color.
+* Located at top of editor, no border (blends with body).
+* **Toolbar row**: 32x32px buttons with icons, grouped with dividers:
+  * Text formatting: Bold (B), Underline (U)
+  * Headings: H1, H2, H3
+  * Lists: Bullet list, Numbered list, Task list (checkbox)
+  * Indentation: Indent right, Indent left (Tab/Shift+Tab)
+  * Links: Insert/edit link button
+* Active buttons use accent blue background.
+* All icons are monochrome outline style (16x16px).
 
 ### Note Title
 
-* Large, bold text (e.g. “TODO”).
-* Left aligned, top margin around 16–24px, with breathing space from toolbar.
+* Large, bold text (28px, 700 weight).
+* Left aligned, minimal padding (8px vertical, 24px horizontal).
+* **Last updated timestamp** shown below title in muted text (12px).
+* Timestamp format: "25th of January 2026 at 2:30 PM"
 
 ### Content Area
 
-* **Background**: same as panel.
-* **Padding**: at least 24px on all sides.
+* **Background**: same as main panel (`#111214`).
+* **Padding**: 24px on all sides.
 * **Text color**: off-white for main text, muted for metadata.
-* Use clear vertical spacing between logical sections (e.g. “MIT” block vs “TODO” block).
+* Use clear vertical spacing between logical sections.
 
 ---
 
@@ -130,32 +135,33 @@ Use a **three-panel app layout**:
 * **Sections**
 
   * Use headings within the note: e.g. `MIT`, `TODO`, `Gary`, etc.
-  * Headings should be clearly differentiated: small caps or bold, slightly larger than body.
+  * Headings should be clearly differentiated: bold, slightly larger than body.
 
 * **Checklist items**
 
   * Each item is a single row:
-
-    * Left: square checkbox (outline when unchecked, filled accent with check icon when checked).
+    * Left: 16x16px square checkbox (gray outline when unchecked, green fill with white check when checked).
     * Right: task text.
-  * Vertical spacing between checklist items: 4–6px.
-  * Multi-line items wrap under the text, aligned with the first line (indented so they don’t appear under the checkbox).
-  * Checked items may:
-
-    * Dim text color, and/or
-    * Add a subtle strikethrough (optional; Evernote doesn’t always show it but it’s a good UX option).
+  * **Gap between checkbox and text: 8px**.
+  * **Vertical spacing between items: 3px** (margin-bottom).
+  * Multi-line items wrap under the text, aligned with the first line.
+  * Checked items:
+    * Dimmed text color (muted gray).
+    * Strikethrough decoration.
 
 * **Nested/Grouped items**
 
-  * Indent child tasks under a parent label (e.g. section “Gary” with indented subtasks).
-  * Indent size: 16–24px from parent item’s text.
-  * Optional: use bullet/chevron icon for top-level group label instead of a checkbox if it’s just a header.
+  * Indent child tasks under a parent using Tab key.
+  * Indent size: 24px from parent item.
+  * Nested task lists have 8px top margin.
 
 * **Keyboard interactions**
 
-  * Enter on a checklist item → create new checklist item below.
+  * **Enter** on a checklist item → create new checklist item below (not a paragraph).
   * Backspace at beginning of text on empty item → remove item.
-  * Tab / Shift+Tab → indent / outdent checklist items to form hierarchy.
+  * **Tab** → indent checklist item (sink).
+  * **Shift+Tab** → outdent checklist item (lift).
+  * **Ctrl/Cmd+Enter** → toggle checkbox checked state.
 
 ---
 
@@ -207,3 +213,25 @@ Use a **three-panel app layout**:
 
   * Same top/bottom padding on cards and list rows.
   * Same margin under headings before content.
+
+---
+
+## Links
+
+* **Styling**: Accent blue color (`#3B82F6`) with underline.
+* **Auto-linking**: URLs are automatically detected while typing and converted to links.
+* **Paste behavior**: When pasting a URL, it auto-links (fetches page title when possible).
+* **Click behavior**: Links open in external browser (not in-app navigation).
+* **Toolbar**: Link button to insert/edit/remove links.
+
+---
+
+## Special Notes
+
+### Scratch Pad
+
+* A permanent note that cannot be deleted or favorited.
+* Title is fixed as "Scratch Pad" and cannot be edited.
+* Always appears at the top of the sidebar, above Shortcuts.
+* Uses a pencil/edit icon with yellow accent color.
+* Provides a quick place for temporary notes and ideas.

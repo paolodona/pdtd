@@ -89,3 +89,48 @@ pub fn search_notes(storage: State<Storage>, query: String) -> Result<Vec<NoteMe
         .search_notes(&query)
         .map_err(|e| e.to_string())
 }
+
+/// Fetch the title of a URL by making an HTTP request and extracting the <title> tag
+#[tauri::command]
+pub async fn fetch_url_title(url: String) -> Result<String, String> {
+    // Make HTTP request to fetch the page
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let response = client
+        .get(&url)
+        .header("User-Agent", "Mozilla/5.0 (compatible; PDTodo/1.0)")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let html = response.text().await.map_err(|e| e.to_string())?;
+
+    // Extract title from HTML using a simple regex-like approach
+    // Look for <title>...</title>
+    let title_start = html.to_lowercase().find("<title>");
+    let title_end = html.to_lowercase().find("</title>");
+
+    match (title_start, title_end) {
+        (Some(start), Some(end)) if end > start => {
+            let title_content = &html[start + 7..end];
+            // Clean up the title (decode HTML entities, trim whitespace)
+            let title = title_content
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", "\"")
+                .replace("&#39;", "'")
+                .replace("&nbsp;", " ")
+                .trim()
+                .to_string();
+            Ok(title)
+        }
+        _ => {
+            // No title found, return the URL as fallback
+            Ok(url)
+        }
+    }
+}

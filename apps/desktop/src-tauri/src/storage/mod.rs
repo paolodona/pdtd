@@ -311,6 +311,30 @@ impl Storage {
         Ok(new_id)
     }
 
+    /// Ensure the Scratch Pad note exists (creates it if not present)
+    pub fn ensure_scratch_pad(&self) -> Result<()> {
+        const SCRATCH_PAD_ID: &str = "scratch-pad";
+
+        let conn = self.conn.lock().unwrap();
+
+        // Check if scratch pad already exists
+        let exists: bool = conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM notes WHERE id = ?)",
+            [SCRATCH_PAD_ID],
+            |row| row.get(0),
+        )?;
+
+        if !exists {
+            let now = chrono::Utc::now().timestamp_millis();
+            conn.execute(
+                "INSERT INTO notes (id, title, starred, created_at, updated_at) VALUES (?, ?, 0, ?, ?)",
+                params![SCRATCH_PAD_ID, "Scratch Pad", now, now],
+            )?;
+        }
+
+        Ok(())
+    }
+
     pub fn search_notes(&self, query: &str) -> Result<Vec<NoteMeta>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(

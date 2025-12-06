@@ -11,6 +11,7 @@ import ListItem from '@tiptap/extension-list-item';
 import TaskList from '@tiptap/extension-task-list';
 import History from '@tiptap/extension-history';
 import Placeholder from '@tiptap/extension-placeholder';
+import Link from '@tiptap/extension-link';
 import { TaskItemExtended } from './extensions/TaskItemExtended';
 
 /**
@@ -39,6 +40,15 @@ export function getEditorExtensions(options?: { placeholder?: string }) {
     TaskList,
     TaskItemExtended.configure({
       nested: true,
+    }),
+    Link.configure({
+      openOnClick: false,  // We handle click separately to open in external browser
+      autolink: true,      // Auto-detect URLs while typing
+      linkOnPaste: true,   // Auto-link pasted URLs
+      HTMLAttributes: {
+        rel: 'noopener noreferrer nofollow',
+        target: null,
+      },
     }),
     History,
     Placeholder.configure({
@@ -112,8 +122,8 @@ export const editorStyles = `
   .ProseMirror ul[data-type="taskList"] li {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 6px;
+    gap: 8px;
+    margin-bottom: 3px;
     min-height: 22px;
   }
 

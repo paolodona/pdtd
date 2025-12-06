@@ -14,6 +14,7 @@
     "@tiptap/extension-document": "^2.1.13",
     "@tiptap/extension-heading": "^2.1.13",
     "@tiptap/extension-history": "^2.1.13",
+    "@tiptap/extension-link": "^2.1.13",
     "@tiptap/extension-list-item": "^2.1.13",
     "@tiptap/extension-ordered-list": "^2.1.13",
     "@tiptap/extension-paragraph": "^2.1.13",

@@ -7,6 +7,7 @@ use tauri::Manager;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             // Initialize storage
             let app_data_dir = app.path().app_data_dir().expect("Failed to get app data dir");
@@ -14,6 +15,9 @@ pub fn run() {
 
             let storage = storage::Storage::new(&app_data_dir)
                 .expect("Failed to initialize storage");
+
+            // Ensure the Scratch Pad note exists
+            storage.ensure_scratch_pad().expect("Failed to ensure scratch pad");
 
             app.manage(storage);
 
@@ -31,6 +35,7 @@ pub fn run() {
             commands::permanently_delete_note,
             commands::duplicate_note,
             commands::search_notes,
+            commands::fetch_url_title,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

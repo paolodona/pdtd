@@ -34,7 +34,7 @@ export const TitleBar: Component = () => {
             />
           </svg>
         </button>
-        <span class="titlebar-title">PDTodo</span>
+        <span class="titlebar-title">pdtodo</span>
       </div>
       <div class="titlebar-center" />
       <div class="titlebar-right">
