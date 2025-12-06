@@ -1,6 +1,7 @@
 import { createStore, produce } from 'solid-js/store';
 import type { NoteMeta } from '@pdtodo/types';
 import { invoke } from '@tauri-apps/api/core';
+import { settingsStore, setLastOpenedNoteId } from './settingsStore';
 
 interface NotesState {
   notes: NoteMeta[];
@@ -94,11 +95,17 @@ export async function loadNotes(): Promise<void> {
     const notes = await invoke<NoteMeta[]>('get_notes');
     setNotesState('notes', notes);
 
-    // Select the first note if none is selected
+    // Select the last opened note if it exists, otherwise select the first note
     if (!notesState.selectedNoteId && notes.length > 0) {
-      const firstActive = notes.find((n) => !n.deletedAt);
-      if (firstActive) {
-        setNotesState('selectedNoteId', firstActive.id);
+      const lastOpenedId = settingsStore.lastOpenedNoteId;
+      const lastOpenedNote = lastOpenedId ? notes.find((n) => n.id === lastOpenedId && !n.deletedAt) : null;
+      if (lastOpenedNote) {
+        setNotesState('selectedNoteId', lastOpenedNote.id);
+      } else {
+        const firstActive = notes.find((n) => !n.deletedAt);
+        if (firstActive) {
+          setNotesState('selectedNoteId', firstActive.id);
+        }
       }
     }
   } catch (error) {
@@ -170,6 +177,7 @@ export async function createNote(): Promise<string | null> {
 export async function selectNote(noteId: string): Promise<void> {
   await flushPendingTitleUpdate();
   setNotesState('selectedNoteId', noteId);
+  setLastOpenedNoteId(noteId);
 }
 
 /**
@@ -206,6 +214,21 @@ export function updateNoteTitle(noteId: string, title: string): void {
       }
     }, 500),
   };
+}
+
+/**
+ * Update the updatedAt timestamp for a note in the store
+ * Called after content is saved to keep the UI in sync
+ */
+export function updateNoteTimestamp(noteId: string): void {
+  setNotesState(
+    produce((state) => {
+      const note = state.notes.find((n) => n.id === noteId);
+      if (note) {
+        note.updatedAt = Date.now();
+      }
+    })
+  );
 }
 
 /**

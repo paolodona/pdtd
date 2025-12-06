@@ -29,6 +29,15 @@ export const settingsStore = {
   get apiServerUrl() {
     return settingsState.apiServerUrl;
   },
+  get allNotesExpanded() {
+    return settingsState.allNotesExpanded;
+  },
+  get trashExpanded() {
+    return settingsState.trashExpanded;
+  },
+  get lastOpenedNoteId() {
+    return settingsState.lastOpenedNoteId;
+  },
 };
 
 interface StoredSettings extends Partial<UserSettings> {
@@ -48,6 +57,9 @@ export async function loadSettings(): Promise<void> {
         fontSize: settings.fontSize ?? DEFAULT_USER_SETTINGS.fontSize,
         sidebarWidth: settings.sidebarWidth ?? DEFAULT_USER_SETTINGS.sidebarWidth,
         theme: settings.theme ?? DEFAULT_USER_SETTINGS.theme,
+        allNotesExpanded: settings.allNotesExpanded ?? DEFAULT_USER_SETTINGS.allNotesExpanded,
+        trashExpanded: settings.trashExpanded ?? DEFAULT_USER_SETTINGS.trashExpanded,
+        lastOpenedNoteId: settings.lastOpenedNoteId ?? DEFAULT_USER_SETTINGS.lastOpenedNoteId,
         apiServerUrl: settings.apiServerUrl ?? '',
         isLoaded: true,
       });
@@ -69,6 +81,9 @@ async function saveSettings(): Promise<void> {
       fontSize: settingsState.fontSize,
       sidebarWidth: settingsState.sidebarWidth,
       theme: settingsState.theme,
+      allNotesExpanded: settingsState.allNotesExpanded,
+      trashExpanded: settingsState.trashExpanded,
+      lastOpenedNoteId: settingsState.lastOpenedNoteId,
       apiServerUrl: settingsState.apiServerUrl,
     };
     localStorage.setItem('pdtodo-settings', JSON.stringify(settings));
@@ -129,5 +144,29 @@ export function setTheme(theme: 'dark' | 'light' | 'system'): void {
  */
 export function setApiServerUrl(url: string): void {
   setSettingsState('apiServerUrl', url);
+  saveSettings();
+}
+
+/**
+ * Update All Notes section expanded state
+ */
+export function setAllNotesExpanded(expanded: boolean): void {
+  setSettingsState('allNotesExpanded', expanded);
+  saveSettings();
+}
+
+/**
+ * Update Trash section expanded state
+ */
+export function setTrashExpanded(expanded: boolean): void {
+  setSettingsState('trashExpanded', expanded);
+  saveSettings();
+}
+
+/**
+ * Update last opened note ID
+ */
+export function setLastOpenedNoteId(noteId: string | null): void {
+  setSettingsState('lastOpenedNoteId', noteId);
   saveSettings();
 }

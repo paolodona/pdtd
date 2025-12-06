@@ -66,6 +66,20 @@ export function getEditorExtensions(options?: { placeholder?: string }) {
           'Mod-Shift-7': () => this.editor.commands.toggleOrderedList(),
           'Mod-Shift-8': () => this.editor.commands.toggleBulletList(),
           'Mod-Shift-9': () => this.editor.commands.toggleTaskList(),
+          // Capture Tab/Shift-Tab to prevent default browser tab navigation
+          // These run after list-specific handlers but ensure we always prevent default
+          'Tab': () => {
+            // Try to indent list items, but always return true to prevent tab navigation
+            this.editor.commands.sinkListItem('listItem') ||
+              this.editor.commands.sinkListItem('taskItem');
+            return true;
+          },
+          'Shift-Tab': () => {
+            // Try to outdent list items, but always return true to prevent tab navigation
+            this.editor.commands.liftListItem('listItem') ||
+              this.editor.commands.liftListItem('taskItem');
+            return true;
+          },
         };
       },
     }),
@@ -124,7 +138,7 @@ export const editorStyles = `
 
   .ProseMirror ul[data-type="taskList"] li {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     margin-bottom: 3px;
     min-height: 22px;
@@ -136,6 +150,7 @@ export const editorStyles = `
     align-items: center;
     justify-content: center;
     margin: 0;
+    margin-top: 3px;
     height: 16px;
     width: 16px;
   }
@@ -193,7 +208,7 @@ export const editorStyles = `
 
   /* Nested task lists */
   .ProseMirror ul[data-type="taskList"] ul[data-type="taskList"] {
-    margin-left: 1.5rem;
+    margin-left: 0;
     margin-top: 6px;
   }
 
