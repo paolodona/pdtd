@@ -23,11 +23,15 @@ interface EditorProps {
   noteId: string;
 }
 
-// Create Yjs undo extension once at module level to avoid keyed plugin conflicts
+// Create Yjs undo plugin instance once at module level to avoid keyed plugin conflicts
+// The plugin must be created once and reused, as ProseMirror doesn't allow multiple
+// instances of the same keyed plugin
+const yjsUndoPluginInstance = yUndoPlugin();
+
 const YjsUndo = Extension.create({
   name: 'yjsUndo',
   addProseMirrorPlugins() {
-    return [yUndoPlugin()];
+    return [yjsUndoPluginInstance];
   },
 });
 
