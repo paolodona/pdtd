@@ -191,7 +191,7 @@ export const editorStyles = `
 
   /* Nested task lists */
   .ProseMirror ul[data-type="taskList"] ul[data-type="taskList"] {
-    margin-left: 1.5rem;
+    margin-left: 0;
     margin-top: 6px;
   }
 
