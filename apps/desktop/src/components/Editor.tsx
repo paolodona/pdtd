@@ -23,6 +23,14 @@ interface EditorProps {
   noteId: string;
 }
 
+// Create Yjs undo extension once at module level to avoid keyed plugin conflicts
+const YjsUndo = Extension.create({
+  name: 'yjsUndo',
+  addProseMirrorPlugins() {
+    return [yUndoPlugin()];
+  },
+});
+
 /**
  * Get ordinal suffix for a day number (1st, 2nd, 3rd, 4th, etc.)
  */
@@ -156,14 +164,6 @@ export const Editor: Component<EditorProps> = (props) => {
     // Remove History extension from base extensions (Yjs handles undo/redo)
     const baseExtensions = getEditorExtensions({ placeholder: 'Start writing...' })
       .filter((ext: { name: string }) => ext.name !== 'history');
-
-    // Create Yjs undo extension that wraps y-prosemirror's undo plugin
-    const YjsUndo = Extension.create({
-      name: 'yjsUndo',
-      addProseMirrorPlugins() {
-        return [yUndoPlugin()];
-      },
-    });
 
     const newEditor = new TipTapEditor({
       element: editorRef,
