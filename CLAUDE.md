@@ -6,8 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 PDTodo is a minimalist, offline-first note-taking application with CRDT-based synchronization. It uses a pnpm monorepo with Turbo for task orchestration.
 
-See `FEATURES.md` for complete product specification and feature documentation.
-See `DESIGN.md` for complete design and UI/UX guidelines
+Reference `FEATURES.md` for complete product specification and feature documentation.
+Reference `DESIGN.md` for complete design and UI/UX guidelines
+Reference `ARCHITECTURE.md` for complete technical architecture and global plan
 
 ## Common Commands
 
@@ -100,3 +101,5 @@ Reference `DESIGN.md` for UI guidelines. Key points:
 - `REDIS_URL` - Redis connection string
 - `JWT_SECRET` - Secret for JWT tokens
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` - OAuth2
+
+When making changes, ensure reference files `FEATURES.md`, `DESIGN.md` and `ARCHITECTURE.md` are kept up to date and dont go out of sync.

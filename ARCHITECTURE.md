@@ -10,6 +10,17 @@ Speed - Sub-100ms startup, instant saves
 Offline-first - Full functionality without network
 Conflict-free sync - No duplicate notes, automatic merging
 Minimalism - Clean UI, small footprint, low dependencies
+Implementation Status
+As of December 2024, the following phases have been completed:
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| Phase 1: Desktop MVP | ✅ COMPLETE | Full offline-first desktop app with TipTap editor |
+| Phase 2: Server & Sync | 🟡 MOSTLY COMPLETE | API server running, WebSocket real-time sync not fully connected |
+| Phase 3: Web Application | 🟡 MOSTLY COMPLETE | Full web app with auth, missing real-time sync |
+| Phase 4: Polish & Release | 🔄 IN PROGRESS | Basic functionality complete, installer pending |
+| Phase 5: Android App | ⬜ NOT STARTED | Future milestone |
+
 Technology Stack Selection
 Desktop Application: Tauri 2.0 + Rust
 Why Tauri over Electron:
@@ -113,6 +124,17 @@ Architecture Overview
                     └─────────────────────────┘
 
 Data Model
+Scratch Pad Feature [IMPLEMENTED]
+The Scratch Pad is a special permanent note that serves as a quick capture area:
+
+- **Fixed ID**: `"scratch-pad"` (not a UUID)
+- **Always visible**: Appears at the top of the sidebar, above Shortcuts
+- **Non-deletable**: Cannot be moved to trash or permanently deleted
+- **Non-starrable**: Cannot be added to Shortcuts section
+- **Fixed title**: Title is always "Scratch Pad" and cannot be edited
+- **Visual distinction**: Uses a pencil icon with yellow accent color
+- **Auto-created**: Storage layer ensures Scratch Pad exists on initialization
+
 Note Structure
 interface Note {
   id: string;              // UUID v7 (time-sortable)
@@ -187,7 +209,35 @@ Update Log Structure (Local)
 ├── auth.json                # Encrypted auth tokens
 └── config.json              # User settings
 
-Desktop Application Design
+Desktop Application Design [IMPLEMENTED]
+Component Architecture
+The desktop frontend is built with SolidJS and organized as follows:
+
+**Main Components** (`apps/desktop/src/components/`):
+- `App.tsx` - Root component, orchestrates layout and keyboard shortcuts
+- `TitleBar.tsx` - Custom Tauri window controls (minimize, maximize, close)
+- `Sidebar.tsx` - Note navigation with search, sections, and note list
+- `Editor.tsx` - TipTap editor with toolbar, title field, and content area
+- `NoteItem.tsx` - Individual note in sidebar with actions (star, delete)
+- `SearchInput.tsx` - Reusable search input component
+
+**State Management** (`apps/desktop/src/stores/`):
+- `notesStore.ts` - Note CRUD operations, selection, search filtering
+- `settingsStore.ts` - User preferences (fontSize, sidebarWidth, theme)
+
+**Hooks** (`apps/desktop/src/hooks/`):
+- `useKeyboardShortcuts.ts` - Global keyboard shortcut handler
+
+**Tauri Commands** (`apps/desktop/src-tauri/src/commands/`):
+- Note CRUD: `get_notes`, `get_note`, `create_note`, `update_note_*`, `delete_note`, etc.
+- Search: `search_notes` (FTS5)
+- Utilities: `fetch_url_title`
+
+**Storage** (`apps/desktop/src-tauri/src/storage/`):
+- SQLite database for metadata and FTS5 index
+- Binary `.yjs` files for Yjs document content
+- Automatic Scratch Pad creation on init
+
 Window Layout
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  ═══════════════════════════════════════════════════════════════════   │
@@ -302,7 +352,7 @@ Ctrl+Delete	Move note to trash
 Ctrl+Shift+D	Duplicate note
 Ctrl+,	Open settings
 Escape	Close search / deselect
-API Specification
+API Specification [IMPLEMENTED]
 Base URL
 Production: https://api.pdtodo.com
 Development: http://localhost:3000
@@ -312,7 +362,7 @@ All API requests (except /auth/*) require a valid JWT token in the Authorization
 Authorization: Bearer <jwt_token>
 
 Endpoints
-Authentication
+Authentication [IMPLEMENTED]
 POST   /auth/google           # Exchange Google OAuth code for JWT
   Request:
     { "code": "google_auth_code", "redirect_uri": "..." }
@@ -331,7 +381,7 @@ POST   /auth/logout           # Invalidate refresh token
   Response:
     { "success": true }
 
-Notes
+Notes [IMPLEMENTED]
 GET    /notes                 # List all notes (metadata only)
   Query params:
     - includeDeleted: boolean (default: false)
@@ -386,8 +436,8 @@ DELETE /notes/:id/permanent   # Permanent delete
   Response:
     { "success": true }
 
-Sync
-POST   /sync/push             # Push Yjs updates to server
+Sync [PARTIAL - WebSocket not fully connected]
+POST   /sync/push             # Push Yjs updates to server [IMPLEMENTED]
   Request:
     {
       "updates": [
@@ -405,7 +455,7 @@ POST   /sync/push             # Push Yjs updates to server
       "serverTime": 1699999999999
     }
 
-POST   /sync/pull             # Pull missing updates from server
+POST   /sync/pull             # Pull missing updates from server [IMPLEMENTED]
   Request:
     {
       "stateVectors": {
@@ -433,7 +483,7 @@ POST   /sync/pull             # Pull missing updates from server
       "serverTime": 1699999999999
     }
 
-WebSocket /sync/live          # Real-time sync connection
+WebSocket /sync/live          # Real-time sync connection [DECLARED - handler exists, broadcast not implemented]
   # Client → Server messages:
   { "type": "subscribe", "noteIds": ["01HXK5..."] }
   { "type": "update", "noteId": "01HXK5...", "update": "<base64>" }
@@ -445,7 +495,7 @@ WebSocket /sync/live          # Real-time sync connection
   { "type": "noteDeleted", "noteId": "01HXK5..." }
   { "type": "pong" }
 
-User
+User [IMPLEMENTED]
 GET    /user/me               # Get current user profile
   Response:
     {
@@ -550,15 +600,15 @@ END;
 $$ LANGUAGE plpgsql;
 
 Development Phases
-Phase 1: Desktop MVP (Weeks 1-4)
-Week 1: Project Setup
+Phase 1: Desktop MVP ✅ COMPLETE
+Week 1: Project Setup ✅
 
 Initialize Tauri 2.0 project with Rust backend
 Set up SolidJS frontend with TypeScript
 Configure TipTap editor with basic extensions
 Implement dark theme and basic layout
 Set up monorepo with Turborepo
-Week 2: Core Editor
+Week 2: Core Editor ✅
 
 Implement checkbox extension with strikethrough styling
 Add bullet lists with multi-level indentation
@@ -566,190 +616,191 @@ Add numbered lists with multi-level indentation
 Headers (H1, H2, H3)
 Bold and underline formatting
 Font size zoom controls (Ctrl+/-, persisted)
-Week 3: Local Storage
+Week 3: Local Storage ✅
 
 Integrate Yjs for document state management
 SQLite database for note index and metadata
 File-based storage for Yjs documents
 Auto-save with 5-10 second debouncing
 Full-text search with SQLite FTS5
-Week 4: Note Management
+Week 4: Note Management ✅
 
 Sidebar with note list (sorted by updated date)
 Star/unstar functionality with shortcuts section
 Trash with 90-day retention
 Note creation and deletion
 Search by title (Ctrl+F) and body (Ctrl+Shift+F)
-Windows installer creation
-Phase 2: Server & Sync (Weeks 5-8)
-Week 5: API Server Setup
+Windows installer creation (pending)
+Phase 2: Server & Sync 🟡 MOSTLY COMPLETE
+Week 5: API Server Setup ✅
 
 Rust/Axum server scaffold
 PostgreSQL schema and migrations
 Docker Compose for local development
 Basic health check and logging
-Week 6: Authentication
+Week 6: Authentication ✅
 
 Google OAuth 2.0 integration
 JWT generation and validation
 Refresh token rotation
 User creation and management
-Week 7: Core API
+Week 7: Core API ✅
 
 Note CRUD endpoints
 Sync push/pull endpoints
 Yjs server-side document handling
-Week 8: Real-time Sync
+Week 8: Real-time Sync 🟡 PARTIAL
 
-WebSocket server implementation
-Redis pub/sub for multi-instance support
-Desktop app sync integration
-Offline → online transition handling
-Comprehensive sync testing
-Phase 3: Web Application (Weeks 9-11)
-Week 9: Web App Setup
+WebSocket server implementation (handler declared, broadcast not complete)
+Redis pub/sub for multi-instance support (pending)
+Desktop app sync integration (pending)
+Offline → online transition handling (pending)
+Comprehensive sync testing (pending)
+Phase 3: Web Application 🟡 MOSTLY COMPLETE
+Week 9: Web App Setup ✅
 
 SolidJS web project (shared components with desktop)
 Vite build configuration
 Routing (SolidJS Router)
 Authentication flow with Google
-Week 10: Feature Parity
+Week 10: Feature Parity ✅
 
 Full editor functionality
 Note management (create, delete, star)
 Search functionality
-Real-time sync integration
-IndexedDB for offline caching
-Week 11: Polish
+Real-time sync integration (pending - uses HTTP push/pull)
+IndexedDB for offline caching (pending)
+Week 11: Polish 🟡 PARTIAL
 
 Responsive design (mobile-friendly)
 Performance optimization
 Cross-browser testing (Chrome, Firefox, Safari, Edge)
 Loading states and error handling
-Phase 4: Polish & Release (Week 12)
+Phase 4: Polish & Release ⬜ PLANNED
 Windows installer (MSI via WiX or NSIS)
 Application icon and branding assets
 Landing page for pdtodo.com
 User documentation
 Beta testing program
 Performance benchmarking
-Future: Phase 5 - Android App
+Future: Phase 5 - Android App ⬜ PLANNED
 Kotlin with Jetpack Compose
 Yjs integration via JavaScript bridge or native port
 SQLite local storage
 Same sync protocol as desktop/web
-Project Structure
+Project Structure [IMPLEMENTED - Actual Structure]
 pdtodo/
 ├── apps/
-│   ├── desktop/                    # Tauri desktop application
+│   ├── desktop/                    # Tauri desktop application ✅
 │   │   ├── src/                    # Frontend source (SolidJS)
-│   │   │   ├── components/
-│   │   │   │   ├── Editor/
-│   │   │   │   ├── Sidebar/
-│   │   │   │   ├── NoteList/
-│   │   │   │   └── Search/
+│   │   │   ├── components/         # UI Components
+│   │   │   │   ├── App.tsx         # Root layout component
+│   │   │   │   ├── TitleBar.tsx    # Custom window controls
+│   │   │   │   ├── Sidebar.tsx     # Note navigation panel
+│   │   │   │   ├── Editor.tsx      # TipTap editor with toolbar
+│   │   │   │   ├── NoteItem.tsx    # Note list item
+│   │   │   │   └── SearchInput.tsx # Search component
 │   │   │   ├── stores/             # SolidJS stores
+│   │   │   │   ├── notesStore.ts   # Note CRUD, selection, filtering
+│   │   │   │   └── settingsStore.ts # User preferences
 │   │   │   ├── hooks/
+│   │   │   │   └── useKeyboardShortcuts.ts
 │   │   │   ├── styles/
-│   │   │   ├── App.tsx
-│   │   │   └── index.tsx
+│   │   │   │   └── index.css       # Global styles
+│   │   │   └── index.tsx           # Entry point
 │   │   ├── src-tauri/              # Rust backend
 │   │   │   ├── src/
-│   │   │   │   ├── main.rs
-│   │   │   │   ├── commands/       # Tauri commands
-│   │   │   │   ├── storage/        # SQLite + file ops
-│   │   │   │   └── sync/           # Sync logic
+│   │   │   │   ├── main.rs         # Tauri app setup
+│   │   │   │   ├── lib.rs          # Library exports
+│   │   │   │   ├── commands/       # Tauri IPC commands
+│   │   │   │   │   └── mod.rs      # Note CRUD, search, fetch_url_title
+│   │   │   │   └── storage/        # SQLite + file ops
+│   │   │   │       └── mod.rs      # Storage implementation
 │   │   │   ├── Cargo.toml
 │   │   │   └── tauri.conf.json
 │   │   ├── index.html
 │   │   └── package.json
 │   │
-│   ├── web/                        # Web application
+│   ├── web/                        # Web application ✅
 │   │   ├── src/
 │   │   │   ├── components/         # Web-specific components
 │   │   │   ├── pages/
-│   │   │   │   ├── Login.tsx
-│   │   │   │   ├── Notes.tsx
-│   │   │   │   └── Settings.tsx
+│   │   │   │   ├── Login.tsx       # Google OAuth login
+│   │   │   │   ├── Notes.tsx       # Main notes page
+│   │   │   │   └── Settings.tsx    # User settings
+│   │   │   ├── stores/
+│   │   │   │   ├── auth.ts         # Auth state, token management
+│   │   │   │   └── notes.ts        # Note state, API integration
+│   │   │   ├── lib/
+│   │   │   │   └── api.ts          # API client with all endpoints
 │   │   │   ├── App.tsx
 │   │   │   └── index.tsx
 │   │   ├── index.html
 │   │   ├── vite.config.ts
 │   │   └── package.json
 │   │
-│   └── api/                        # Backend API server
+│   └── api/                        # Backend API server ✅
 │       ├── src/
-│       │   ├── main.rs
+│       │   ├── main.rs             # Axum server setup
 │       │   ├── routes/
-│       │   │   ├── auth.rs
-│       │   │   ├── notes.rs
-│       │   │   ├── sync.rs
-│       │   │   └── user.rs
-│       │   ├── handlers/
-│       │   ├── models/
+│       │   │   ├── mod.rs          # Route registration
+│       │   │   ├── auth.rs         # OAuth, JWT, refresh tokens
+│       │   │   ├── notes.rs        # Note CRUD endpoints
+│       │   │   ├── sync.rs         # Push/pull sync, WebSocket
+│       │   │   └── user.rs         # User profile, settings
 │       │   ├── db/
-│       │   ├── sync/               # Yjs server handling
-│       │   └── auth/               # JWT, OAuth
-│       ├── migrations/
+│       │   │   └── mod.rs          # Database operations
+│       │   └── auth/
+│       │       └── mod.rs          # JWT extraction, validation
+│       ├── migrations/             # SQLx migrations
 │       ├── Cargo.toml
 │       └── Dockerfile
 │
 ├── packages/
-│   ├── ui/                         # Shared UI components
+│   ├── ui/                         # Shared UI components ✅
 │   │   ├── src/
-│   │   │   ├── Button/
-│   │   │   ├── Input/
-│   │   │   ├── Modal/
+│   │   │   ├── Button.tsx          # Button variants (primary, secondary, ghost, danger)
+│   │   │   ├── Input.tsx           # Text input with error state
+│   │   │   ├── Modal.tsx           # Portal-based modal
+│   │   │   ├── Icon.tsx            # SVG icon system
 │   │   │   └── index.ts
 │   │   └── package.json
 │   │
-│   ├── editor/                     # TipTap editor configuration
+│   ├── editor/                     # TipTap editor configuration ✅
 │   │   ├── src/
-│   │   │   ├── extensions/
-│   │   │   │   ├── Checkbox.ts
-│   │   │   │   ├── BulletList.ts
-│   │   │   │   └── ...
-│   │   │   ├── Editor.tsx
+│   │   │   ├── editorConfig.ts     # Extension configuration
+│   │   │   ├── TaskItemExtended.ts # Custom task item extension
+│   │   │   ├── editorStyles.ts     # CSS styles
 │   │   │   └── index.ts
 │   │   └── package.json
 │   │
-│   ├── sync/                       # Yjs sync utilities
+│   ├── sync/                       # Yjs sync utilities ✅
 │   │   ├── src/
-│   │   │   ├── provider.ts
-│   │   │   ├── storage.ts
+│   │   │   ├── document.ts         # Yjs document helpers
+│   │   │   ├── provider.ts         # SyncProvider class
+│   │   │   ├── storage.ts          # LocalStorage adapter
 │   │   │   └── index.ts
 │   │   └── package.json
 │   │
-│   └── types/                      # Shared TypeScript types
+│   └── types/                      # Shared TypeScript types ✅
 │       ├── src/
-│       │   ├── note.ts
-│       │   ├── user.ts
-│       │   ├── sync.ts
+│       │   ├── note.ts             # Note, NoteMeta interfaces
+│       │   ├── user.ts             # User, UserSettings
+│       │   ├── sync.ts             # SyncUpdate, WebSocketMessage
+│       │   ├── api.ts              # ApiError, AuthResponse
 │       │   └── index.ts
 │       └── package.json
 │
 ├── docker/
-│   ├── docker-compose.yml          # Local dev environment
-│   ├── docker-compose.prod.yml
-│   └── nginx.conf
-│
-├── docs/
-│   ├── architecture.md
-│   ├── api.md
-│   └── deployment.md
-│
-├── scripts/
-│   ├── setup.sh
-│   └── build-all.sh
-│
-├── .github/
-│   └── workflows/
-│       ├── ci.yml
-│       └── release.yml
+│   └── docker-compose.yml          # PostgreSQL, Redis
 │
 ├── turbo.json                      # Turborepo configuration
 ├── pnpm-workspace.yaml
 ├── package.json
+├── ARCHITECTURE.md                 # This file
+├── FEATURES.md                     # Product features spec
+├── DESIGN.md                       # UI/UX guidelines
+├── CLAUDE.md                       # AI assistant instructions
 └── README.md
 
 Performance Targets
@@ -805,6 +856,59 @@ Deployment Architecture
                     │   Supabase)   │         │               │
                     └───────────────┘         └───────────────┘
 
+Implementation Notes
+This section documents implementation details that extend or differ from the original plan.
+
+### TaskItemExtended Custom Extension
+The task list implementation uses a custom TipTap extension (`TaskItemExtended`) with specific keyboard behaviors:
+- **Enter**: Creates a new task item (not a paragraph inside the current item)
+- **Tab**: Indents to create nested sub-tasks
+- **Shift+Tab**: Outdents task item
+- **Ctrl/Cmd+Enter**: Toggles checkbox checked/unchecked
+- **Strikethrough**: Completed tasks show strikethrough text with muted color
+
+### Package Exports
+Each shared package exports specific utilities:
+
+**@pdtodo/editor**:
+- `getEditorExtensions(options?)` - Configured TipTap extensions
+- `editorStyles` - CSS string for editor styling
+- `TaskItemExtended` - Custom task item extension
+
+**@pdtodo/sync**:
+- Document helpers: `createNoteDocument`, `encodeDocument`, `decodeDocument`
+- Metadata: `setNoteTitle`, `getNoteTitle`, `setNoteStarred`, `getNoteStarred`
+- Sync: `getStateVector`, `getMissingUpdates`, `applyUpdate`, `mergeUpdates`
+- `SyncProvider` class for WebSocket/HTTP sync
+- `LocalStorage` class with debounced auto-save
+
+**@pdtodo/types**:
+- Note types: `Note`, `NoteMeta`, `CreateNoteInput`, `UpdateNoteInput`
+- User types: `User`, `UserSettings`, `DEFAULT_USER_SETTINGS`
+- Sync types: `SyncUpdate`, `SyncPushRequest/Response`, `SyncPullRequest/Response`
+- API types: `ApiError`, `AuthResponse`, `ErrorCode`
+
+**@pdtodo/ui**:
+- Components: `Button`, `Input`, `Modal`, `Icon`
+- Button variants: primary, secondary, ghost, danger
+- Icon names: search, star, star-filled, trash, plus, folder, document, settings, menu, close, check
+
+### Desktop Storage Implementation
+The desktop app uses a hybrid storage approach:
+- **SQLite database** (`pdtodo.db`): Note metadata, FTS5 search index
+- **Binary files** (`notes/{id}.yjs`): Yjs document content
+- **Automatic Scratch Pad**: Storage layer creates Scratch Pad on initialization if missing
+
+### Web App Authentication Flow
+1. User clicks "Sign in with Google"
+2. Redirects to Google OAuth consent screen
+3. Google redirects back with authorization code
+4. Frontend exchanges code at `POST /auth/google`
+5. Server validates with Google, creates/updates user, returns JWT
+6. Access token (1 hour) stored in localStorage
+7. Refresh token (30 days) used for automatic token refresh
+8. Token refreshed 60 seconds before expiry
+
 Icon & Branding Assets Needed
 App Icon (multiple sizes)
 
@@ -825,10 +929,25 @@ Social/Meta
 
 og-image.png (1200x630) for link previews
 Next Steps
-Ready to begin implementation. Recommended order:
+The core application is functional. Remaining work to reach production:
 
-Initialize monorepo - Turborepo + pnpm workspace
-Create Tauri desktop app - Basic window with SolidJS
-Implement TipTap editor - All formatting features
-Build local storage - SQLite + Yjs persistence
-Complete desktop MVP - Full offline functionality
+### High Priority (Complete Core Sync)
+1. **Complete WebSocket real-time sync** - Connect SyncProvider to /sync/live endpoint
+2. **Add Redis pub/sub** - Enable multi-instance server broadcasting
+3. **Desktop ↔ Server sync** - Integrate desktop app with API server
+4. **Offline queue for web** - Queue updates when offline, sync on reconnect
+
+### Medium Priority (Polish)
+5. **Light/System theme support** - Implement theme switching in settings
+6. **Windows installer** - Create MSI via WiX or NSIS
+7. **Performance optimization** - Lazy loading, bundle optimization
+8. **Cross-browser testing** - Verify Chrome, Firefox, Safari, Edge
+
+### Lower Priority (Launch)
+9. **Landing page** - Create pdtodo.com marketing site
+10. **User documentation** - Getting started guide, keyboard shortcuts reference
+11. **Beta testing program** - Gather user feedback
+12. **Application icons** - Design and export all required sizes
+
+### Future (Phase 5)
+13. **Android app** - Kotlin + Jetpack Compose with Yjs integration
