@@ -222,6 +222,7 @@ export const Editor: Component<EditorProps> = (props) => {
       // Create UndoManager for this document's content
       const xmlFragment = ydoc.getXmlFragment('content');
       const newUndoManager = new Y.UndoManager(xmlFragment);
+      console.log('Created UndoManager for note:', noteId, 'xmlFragment:', xmlFragment);
       setUndoManager(newUndoManager);
 
       // Initialize editor with the Yjs document
@@ -542,6 +543,12 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
   const handleUndo = () => {
     const um = props.undoManager();
     const ed = getEditor();
+    console.log('handleUndo:', {
+      hasUndoManager: !!um,
+      hasEditor: !!ed,
+      canUndo: um?.canUndo(),
+      undoStackLength: um?.undoStack.length
+    });
     if (um && ed) {
       um.undo();
       ed.commands.focus();
@@ -552,6 +559,12 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
   const handleRedo = () => {
     const um = props.undoManager();
     const ed = getEditor();
+    console.log('handleRedo:', {
+      hasUndoManager: !!um,
+      hasEditor: !!ed,
+      canRedo: um?.canRedo(),
+      redoStackLength: um?.redoStack.length
+    });
     if (um && ed) {
       um.redo();
       ed.commands.focus();
