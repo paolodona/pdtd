@@ -71,27 +71,42 @@ impl Storage {
 
             CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON notes(updated_at);
             CREATE INDEX IF NOT EXISTS idx_notes_deleted_at ON notes(deleted_at);
+            "#,
+        )?;
 
-            -- Full-text search
+        // Create FTS table for title search (content is stored in files, not DB)
+        // Use contentless FTS5 since we manage the content ourselves
+        conn.execute_batch(
+            r#"
             CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
                 id UNINDEXED,
                 title,
-                content,
-                content=notes,
-                content_rowid=rowid
+                content=''
             );
+            "#,
+        )?;
 
-            -- Triggers to keep FTS in sync
-            CREATE TRIGGER IF NOT EXISTS notes_ai AFTER INSERT ON notes BEGIN
+        // Drop old triggers if they exist (they may reference wrong schema)
+        let _ = conn.execute_batch(
+            r#"
+            DROP TRIGGER IF EXISTS notes_ai;
+            DROP TRIGGER IF EXISTS notes_au;
+            DROP TRIGGER IF EXISTS notes_ad;
+            "#,
+        );
+
+        // Create triggers to keep FTS in sync
+        conn.execute_batch(
+            r#"
+            CREATE TRIGGER IF NOT EXISTS notes_fts_ai AFTER INSERT ON notes BEGIN
                 INSERT INTO notes_fts(id, title) VALUES (new.id, new.title);
             END;
 
-            CREATE TRIGGER IF NOT EXISTS notes_au AFTER UPDATE ON notes BEGIN
-                DELETE FROM notes_fts WHERE id = old.id;
-                INSERT INTO notes_fts(id, title) VALUES (new.id, new.title);
+            CREATE TRIGGER IF NOT EXISTS notes_fts_au AFTER UPDATE ON notes BEGIN
+                UPDATE notes_fts SET title = new.title WHERE id = old.id;
             END;
 
-            CREATE TRIGGER IF NOT EXISTS notes_ad AFTER DELETE ON notes BEGIN
+            CREATE TRIGGER IF NOT EXISTS notes_fts_ad AFTER DELETE ON notes BEGIN
                 DELETE FROM notes_fts WHERE id = old.id;
             END;
             "#,

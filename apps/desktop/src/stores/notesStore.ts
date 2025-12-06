@@ -16,6 +16,30 @@ const [notesState, setNotesState] = createStore<NotesState>({
   isLoading: false,
 });
 
+// Track pending title updates for flush mechanism
+let pendingTitleUpdate: {
+  noteId: string;
+  title: string;
+  timeout: ReturnType<typeof setTimeout>;
+} | null = null;
+
+/**
+ * Flush any pending title update immediately
+ * Call this before operations that need title to be persisted (note switch, create)
+ */
+export async function flushPendingTitleUpdate(): Promise<void> {
+  if (pendingTitleUpdate) {
+    clearTimeout(pendingTitleUpdate.timeout);
+    const { noteId, title } = pendingTitleUpdate;
+    pendingTitleUpdate = null;
+    try {
+      await invoke('update_note_title', { noteId, title });
+    } catch (error) {
+      console.error('Failed to flush title update:', error);
+    }
+  }
+}
+
 // Computed values
 export const notesStore = {
   get notes() {
@@ -81,12 +105,32 @@ export async function loadNotes(): Promise<void> {
 
 /**
  * Create a new note
+ * Flushes pending updates and adds note directly to store (no loadNotes)
  */
 export async function createNote(): Promise<string | null> {
+  // Flush any pending title updates first to avoid losing them
+  await flushPendingTitleUpdate();
+
   try {
     const noteId = await invoke<string>('create_note', { title: 'Untitled' });
-    await loadNotes();
-    setNotesState('selectedNoteId', noteId);
+    const now = Date.now();
+
+    // Add new note to store directly instead of reloading all notes
+    // This preserves any optimistic updates in the store
+    setNotesState(
+      produce((state) => {
+        state.notes.unshift({
+          id: noteId,
+          title: 'Untitled',
+          starred: false,
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        });
+        state.selectedNoteId = noteId;
+      })
+    );
+
     return noteId;
   } catch (error) {
     console.error('Failed to create note:', error);
@@ -111,15 +155,19 @@ export async function createNote(): Promise<string | null> {
 
 /**
  * Select a note
+ * Flushes any pending title updates before switching
  */
-export function selectNote(noteId: string): void {
+export async function selectNote(noteId: string): Promise<void> {
+  await flushPendingTitleUpdate();
   setNotesState('selectedNoteId', noteId);
 }
 
 /**
- * Update note title
+ * Update note title with debounced persistence
+ * Uses optimistic updates locally, debounces backend saves
  */
-export async function updateNoteTitle(noteId: string, title: string): Promise<void> {
+export function updateNoteTitle(noteId: string, title: string): void {
+  // Optimistic update immediately
   setNotesState(
     produce((state) => {
       const note = state.notes.find((n) => n.id === noteId);
@@ -130,11 +178,24 @@ export async function updateNoteTitle(noteId: string, title: string): Promise<vo
     })
   );
 
-  try {
-    await invoke('update_note_title', { noteId, title });
-  } catch (error) {
-    console.error('Failed to update note title:', error);
+  // Clear existing pending update timeout
+  if (pendingTitleUpdate?.timeout) {
+    clearTimeout(pendingTitleUpdate.timeout);
   }
+
+  // Set up debounced save with tracking
+  pendingTitleUpdate = {
+    noteId,
+    title,
+    timeout: setTimeout(async () => {
+      pendingTitleUpdate = null;
+      try {
+        await invoke('update_note_title', { noteId, title });
+      } catch (error) {
+        console.error('Failed to update note title:', error);
+      }
+    }, 500),
+  };
 }
 
 /**

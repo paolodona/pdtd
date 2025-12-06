@@ -1,6 +1,8 @@
 use std::sync::Arc;
-use axum::{extract::State, Json};
+use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
+
+use crate::auth::AuthUser;
 use crate::AppState;
 
 #[derive(Debug, Serialize)]
@@ -11,7 +13,7 @@ pub struct UserResponse {
     pub picture: Option<String>,
     #[serde(rename = "createdAt")]
     pub created_at: i64,
-    pub settings: UserSettings,
+    pub settings: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,8 +24,12 @@ pub struct UserSettings {
     pub sidebar_width: i32,
 }
 
-fn default_font_size() -> i32 { 16 }
-fn default_sidebar_width() -> i32 { 280 }
+fn default_font_size() -> i32 {
+    16
+}
+fn default_sidebar_width() -> i32 {
+    280
+}
 
 impl Default for UserSettings {
     fn default() -> Self {
@@ -35,23 +41,36 @@ impl Default for UserSettings {
 }
 
 pub async fn get_current_user(
-    State(_state): State<Arc<AppState>>,
-) -> Json<UserResponse> {
-    // TODO: Get user from JWT token
-    Json(UserResponse {
-        id: "user_placeholder".to_string(),
-        email: "user@example.com".to_string(),
-        name: Some("User".to_string()),
-        picture: None,
-        created_at: chrono::Utc::now().timestamp_millis(),
-        settings: UserSettings::default(),
-    })
+    State(state): State<Arc<AppState>>,
+    auth_user: AuthUser,
+) -> Result<Json<UserResponse>, (StatusCode, String)> {
+    let user = state
+        .db
+        .get_user_by_id(auth_user.user_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?
+        .ok_or((StatusCode::NOT_FOUND, "User not found".to_string()))?;
+
+    Ok(Json(UserResponse {
+        id: user.id.to_string(),
+        email: user.email,
+        name: user.name,
+        picture: user.picture_url,
+        created_at: user.created_at.timestamp_millis(),
+        settings: user.settings,
+    }))
 }
 
 pub async fn update_settings(
-    State(_state): State<Arc<AppState>>,
-    Json(settings): Json<UserSettings>,
-) -> Json<serde_json::Value> {
-    // TODO: Update user settings in database
-    Json(serde_json::json!({ "settings": settings }))
+    State(state): State<Arc<AppState>>,
+    auth_user: AuthUser,
+    Json(settings): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let user = state
+        .db
+        .update_user_settings(auth_user.user_id, settings.clone())
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+
+    Ok(Json(serde_json::json!({ "settings": user.settings })))
 }

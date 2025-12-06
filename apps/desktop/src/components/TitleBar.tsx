@@ -9,8 +9,20 @@ export const TitleBar: Component = () => {
   const handleMaximize = () => appWindow.toggleMaximize();
   const handleClose = () => appWindow.close();
 
+  const handleDragStart = (e: MouseEvent) => {
+    // Only start drag if clicking on the titlebar itself, not on buttons
+    if ((e.target as HTMLElement).closest('button')) return;
+    appWindow.startDragging();
+  };
+
+  const handleDoubleClick = (e: MouseEvent) => {
+    // Double-click to maximize/restore, but not on buttons
+    if ((e.target as HTMLElement).closest('button')) return;
+    appWindow.toggleMaximize();
+  };
+
   return (
-    <header class="titlebar" data-tauri-drag-region>
+    <header class="titlebar" onMouseDown={handleDragStart} onDblClick={handleDoubleClick}>
       <div class="titlebar-left">
         <button class="titlebar-btn menu-btn" aria-label="Menu">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -24,7 +36,7 @@ export const TitleBar: Component = () => {
         </button>
         <span class="titlebar-title">PDTodo</span>
       </div>
-      <div class="titlebar-center" data-tauri-drag-region />
+      <div class="titlebar-center" />
       <div class="titlebar-right">
         <button class="titlebar-btn" onClick={handleMinimize} aria-label="Minimize">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">

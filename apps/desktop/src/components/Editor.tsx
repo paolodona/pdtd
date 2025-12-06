@@ -1,8 +1,8 @@
-import { Component, onMount, onCleanup, createEffect, createSignal, Accessor } from 'solid-js';
+import { Component, onMount, onCleanup, createEffect, createSignal, Accessor, on } from 'solid-js';
 import { Editor as TipTapEditor } from '@tiptap/core';
 import Collaboration from '@tiptap/extension-collaboration';
 import { getEditorExtensions, editorStyles } from '@pdtodo/editor';
-import { notesStore, updateNoteTitle } from '../stores/notesStore';
+import { notesStore, updateNoteTitle, flushPendingTitleUpdate } from '../stores/notesStore';
 import { invoke } from '@tauri-apps/api/core';
 import * as Y from 'yjs';
 import type { Note } from '@pdtodo/types';
@@ -20,21 +20,42 @@ interface EditorProps {
   noteId: string;
 }
 
+// Track pending content saves globally for flush mechanism
+let pendingContentSave: {
+  noteId: string;
+  doc: Y.Doc;
+  timeout: ReturnType<typeof setTimeout>;
+} | null = null;
+
+/**
+ * Flush any pending content save immediately
+ */
+async function flushPendingContentSave(): Promise<void> {
+  if (pendingContentSave) {
+    clearTimeout(pendingContentSave.timeout);
+    const { noteId, doc } = pendingContentSave;
+    pendingContentSave = null;
+    try {
+      const content = Y.encodeStateAsUpdate(doc);
+      await invoke('update_note_content', {
+        noteId,
+        content: Array.from(content),
+      });
+    } catch (error) {
+      console.error('Failed to flush content save:', error);
+    }
+  }
+}
+
 export const Editor: Component<EditorProps> = (props) => {
   let editorRef: HTMLDivElement | undefined;
-  let titleRef: HTMLInputElement | undefined;
   let ydoc: Y.Doc | undefined;
   let updateHandler: (() => void) | undefined;
 
-  // Use a signal for editor so toolbar can react to it
   const [editor, setEditor] = createSignal<TipTapEditor | undefined>(undefined);
-
   const [title, setTitle] = createSignal('');
   const [isSaving, setIsSaving] = createSignal(false);
   const [isLoading, setIsLoading] = createSignal(false);
-
-  // Track current note to prevent stale saves
-  let currentNoteId: string | null = null;
 
   // Inject editor styles
   onMount(() => {
@@ -47,35 +68,35 @@ export const Editor: Component<EditorProps> = (props) => {
     }
   });
 
-  // Debounce timeout for saving
-  let saveTimeout: ReturnType<typeof setTimeout> | undefined;
-
-  // Save content to backend
-  const saveContent = async (noteId: string, doc: Y.Doc) => {
-    if (!noteId || noteId !== currentNoteId) return;
-
-    setIsSaving(true);
-    try {
-      const content = Y.encodeStateAsUpdate(doc);
-      await invoke('update_note_content', {
-        noteId,
-        content: Array.from(content),
-      });
-    } catch (error) {
-      console.error('Failed to save note content:', error);
-    } finally {
-      setIsSaving(false);
+  // Save content to backend with debouncing
+  const saveContentDebounced = (noteId: string, doc: Y.Doc) => {
+    // Clear any existing pending save
+    if (pendingContentSave?.timeout) {
+      clearTimeout(pendingContentSave.timeout);
     }
-  };
 
-  // Handle content change with debouncing
-  const handleContentChange = (noteId: string, doc: Y.Doc) => {
-    if (saveTimeout) {
-      clearTimeout(saveTimeout);
-    }
-    saveTimeout = setTimeout(() => {
-      saveContent(noteId, doc);
-    }, 1000);
+    // Set up new pending save
+    pendingContentSave = {
+      noteId,
+      doc,
+      timeout: setTimeout(async () => {
+        if (pendingContentSave?.noteId === noteId) {
+          pendingContentSave = null;
+          setIsSaving(true);
+          try {
+            const content = Y.encodeStateAsUpdate(doc);
+            await invoke('update_note_content', {
+              noteId,
+              content: Array.from(content),
+            });
+          } catch (error) {
+            console.error('Failed to save note content:', error);
+          } finally {
+            setIsSaving(false);
+          }
+        }
+      }, 1000),
+    };
   };
 
   // Create and initialize editor with Yjs document
@@ -111,46 +132,12 @@ export const Editor: Component<EditorProps> = (props) => {
     setEditor(newEditor);
   };
 
-  // Load note content and initialize editor when noteId changes
-  createEffect(async () => {
-    const noteId = props.noteId;
-    if (!noteId || !editorRef) return;
-
-    // Save pending changes from previous note immediately before switching
-    const previousNoteId = currentNoteId;
-    const previousDoc = ydoc;
-    if (saveTimeout) {
-      clearTimeout(saveTimeout);
-      saveTimeout = undefined;
-    }
-    if (previousNoteId && previousDoc) {
-      // Save synchronously before proceeding
-      try {
-        const content = Y.encodeStateAsUpdate(previousDoc);
-        await invoke('update_note_content', {
-          noteId: previousNoteId,
-          content: Array.from(content),
-        });
-      } catch (error) {
-        console.error('Failed to save previous note:', error);
-      }
-    }
-
-    // Update tracking
-    currentNoteId = noteId;
+  // Load and initialize editor for a note
+  const loadNote = async (noteId: string) => {
     setIsLoading(true);
 
-    // Remove previous update handler
-    if (previousDoc && updateHandler) {
-      previousDoc.off('update', updateHandler);
-    }
-
     try {
-      // Fetch note with content from backend
       const note = await invoke<Note>('get_note', { noteId });
-
-      // Only proceed if this is still the current note
-      if (noteId !== currentNoteId) return;
 
       // Create new Yjs document
       ydoc = new Y.Doc();
@@ -166,21 +153,38 @@ export const Editor: Component<EditorProps> = (props) => {
       // Initialize editor with the Yjs document
       initializeEditor(ydoc);
 
-      // Set up update handler for auto-save
-      updateHandler = () => {
-        handleContentChange(noteId, ydoc!);
-      };
+      // Set up auto-save on document changes
+      const docRef = ydoc;
+      updateHandler = () => saveContentDebounced(noteId, docRef);
       ydoc.on('update', updateHandler);
-
     } catch (error) {
       console.error('Failed to load note:', error);
-      // Initialize with empty document on error
       ydoc = new Y.Doc();
       initializeEditor(ydoc);
     } finally {
       setIsLoading(false);
     }
-  });
+  };
+
+  // Handle note switching
+  createEffect(on(
+    () => props.noteId,
+    async (noteId) => {
+      if (!noteId || !editorRef) return;
+
+      // Flush pending saves before switching
+      await flushPendingTitleUpdate();
+      await flushPendingContentSave();
+
+      // Clean up previous note's handler
+      if (ydoc && updateHandler) {
+        ydoc.off('update', updateHandler);
+        updateHandler = undefined;
+      }
+
+      await loadNote(noteId);
+    }
+  ));
 
   // Update title when note changes
   createEffect(() => {
@@ -190,18 +194,11 @@ export const Editor: Component<EditorProps> = (props) => {
     }
   });
 
-  // Handle title change
-  let titleTimeout: ReturnType<typeof setTimeout> | undefined;
+  // Handle title change - updateNoteTitle already handles debouncing
   const handleTitleChange = (e: InputEvent) => {
     const newTitle = (e.target as HTMLInputElement).value;
     setTitle(newTitle);
-
-    if (titleTimeout) {
-      clearTimeout(titleTimeout);
-    }
-    titleTimeout = setTimeout(() => {
-      updateNoteTitle(props.noteId, newTitle);
-    }, 500);
+    updateNoteTitle(props.noteId, newTitle);
   };
 
   // Handle title key down (Enter moves to editor)
@@ -214,21 +211,9 @@ export const Editor: Component<EditorProps> = (props) => {
 
   // Cleanup - save content before destroying
   onCleanup(async () => {
-    // Cancel pending saves and save immediately
-    if (saveTimeout) {
-      clearTimeout(saveTimeout);
-    }
-    if (currentNoteId && ydoc) {
-      try {
-        const content = Y.encodeStateAsUpdate(ydoc);
-        await invoke('update_note_content', {
-          noteId: currentNoteId,
-          content: Array.from(content),
-        });
-      } catch (error) {
-        console.error('Failed to save note on cleanup:', error);
-      }
-    }
+    // Flush any pending saves
+    await flushPendingTitleUpdate();
+    await flushPendingContentSave();
 
     const currentEditor = editor();
     if (currentEditor) {
@@ -237,16 +222,12 @@ export const Editor: Component<EditorProps> = (props) => {
     if (ydoc && updateHandler) {
       ydoc.off('update', updateHandler);
     }
-    if (titleTimeout) {
-      clearTimeout(titleTimeout);
-    }
   });
 
   return (
     <div class="editor">
       <div class="editor-header">
         <input
-          ref={titleRef}
           type="text"
           class="editor-title"
           value={title()}
@@ -260,7 +241,7 @@ export const Editor: Component<EditorProps> = (props) => {
         </div>
       </div>
       <div class="editor-body">
-        <div ref={editorRef} class="editor-container" />
+        <div ref={editorRef} class="editor-content-wrapper" />
       </div>
       <EditorToolbar editor={editor} />
     </div>

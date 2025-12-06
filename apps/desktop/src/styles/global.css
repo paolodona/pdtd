@@ -74,7 +74,7 @@ body,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, Oxygen,
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
     Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
   font-size: var(--font-size-base);
   line-height: 1.5;
@@ -98,6 +98,7 @@ body {
 
 .editor-container {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background-color: var(--bg-primary);
@@ -164,6 +165,11 @@ body {
 :focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
+}
+
+/* Remove focus outline from title input */
+.editor-title:focus-visible {
+  outline: none;
 }
 
 /* Utility classes */

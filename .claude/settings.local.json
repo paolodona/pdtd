@@ -51,7 +51,8 @@
       "Bash(pnpm lint:*)",
       "Bash(pnpm build:*)",
       "Bash(npx vite build)",
-      "Bash(pnpm tauri dev:*)"
+      "Bash(pnpm tauri dev:*)",
+      "Bash(cargo check:*)"
     ],
     "deny": [],
     "ask": []

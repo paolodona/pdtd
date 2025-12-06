@@ -72,7 +72,7 @@ export const editorStyles = `
   }
 
   .ProseMirror p {
-    margin: 0.5em 0;
+    margin: 0 0 6px 0;
   }
 
   .ProseMirror h1 {
@@ -106,28 +106,70 @@ export const editorStyles = `
   .ProseMirror ul[data-type="taskList"] {
     list-style: none;
     padding-left: 0;
+    margin: 0;
   }
 
   .ProseMirror ul[data-type="taskList"] li {
     display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    min-height: 22px;
   }
 
   .ProseMirror ul[data-type="taskList"] li > label {
     flex-shrink: 0;
-    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    height: 16px;
+    width: 16px;
   }
 
   .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
     cursor: pointer;
-    width: 1rem;
-    height: 1rem;
-    accent-color: var(--accent-success);
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    background: #1a1b1e;
+    border: 1.5px solid var(--text-muted, #6B7280);
+    border-radius: 3px;
+    position: relative;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"]:hover {
+    border-color: var(--accent-success, #22C55E);
+    background: #222326;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+    background: var(--accent-success, #22C55E);
+    border-color: var(--accent-success, #22C55E);
+  }
+
+  .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: translate(-50%, -60%) rotate(45deg);
   }
 
   .ProseMirror ul[data-type="taskList"] li > div {
     flex: 1;
+    line-height: 1.4;
+  }
+
+  .ProseMirror ul[data-type="taskList"] li > div p {
+    margin: 0;
   }
 
   /* Strikethrough for completed tasks */
@@ -139,6 +181,7 @@ export const editorStyles = `
   /* Nested task lists */
   .ProseMirror ul[data-type="taskList"] ul[data-type="taskList"] {
     margin-left: 1.5rem;
+    margin-top: 6px;
   }
 
   .ProseMirror p.is-editor-empty:first-child::before {

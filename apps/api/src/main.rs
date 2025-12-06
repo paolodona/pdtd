@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::{
-    routing::{get, post, patch, delete},
+    routing::{get, post, patch, delete, put},
     Router,
 };
 use tower_http::cors::{CorsLayer, Any};
@@ -66,6 +66,7 @@ async fn main() {
         .route("/notes", get(routes::notes::list_notes))
         .route("/notes", post(routes::notes::create_note))
         .route("/notes/:id", get(routes::notes::get_note))
+        .route("/notes/:id", put(routes::notes::update_note))
         .route("/notes/:id", delete(routes::notes::delete_note))
         .route("/notes/:id/restore", post(routes::notes::restore_note))
         .route("/notes/:id/permanent", delete(routes::notes::permanent_delete))
