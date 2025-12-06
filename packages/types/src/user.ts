@@ -20,6 +20,12 @@ export interface UserSettings {
   sidebarWidth: number;
   /** Theme preference */
   theme: 'dark' | 'light' | 'system';
+  /** All Notes section expanded (default: true) */
+  allNotesExpanded: boolean;
+  /** Trash section expanded (default: false) */
+  trashExpanded: boolean;
+  /** Last opened note ID for restoring on restart */
+  lastOpenedNoteId: string | null;
 }
 
 /**
@@ -29,4 +35,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   fontSize: 16,
   sidebarWidth: 280,
   theme: 'dark',
+  allNotesExpanded: true,
+  trashExpanded: false,
+  lastOpenedNoteId: null,
 };

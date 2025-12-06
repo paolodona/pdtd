@@ -1,6 +1,7 @@
 import { onMount, onCleanup } from 'solid-js';
 import { createNote, deleteNote, duplicateNote, notesStore } from '../stores/notesStore';
 import { increaseFontSize, decreaseFontSize, resetFontSize } from '../stores/settingsStore';
+import { focusSearch } from '../stores/focusStore';
 
 type KeyHandler = (event: KeyboardEvent) => boolean | void;
 
@@ -14,6 +15,14 @@ interface ShortcutConfig {
 }
 
 const shortcuts: ShortcutConfig[] = [
+  {
+    key: 'f',
+    ctrl: true,
+    handler: () => {
+      return focusSearch();
+    },
+    description: 'Search notes',
+  },
   {
     key: 'n',
     ctrl: true,

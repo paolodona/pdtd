@@ -1,4 +1,4 @@
-import { Component, For, Show, createMemo, createSignal } from 'solid-js';
+import { Component, For, Show, createMemo } from 'solid-js';
 import {
   notesStore,
   createNote,
@@ -8,23 +8,63 @@ import {
   setSearchQuery,
   SCRATCH_PAD_ID,
 } from '../stores/notesStore';
-import { settingsStore } from '../stores/settingsStore';
+import {
+  settingsStore,
+  setAllNotesExpanded,
+  setTrashExpanded,
+} from '../stores/settingsStore';
+import { focusEditorStart } from '../stores/focusStore';
 import { NoteItem } from './NoteItem';
 import { SearchInput } from './SearchInput';
 import './Sidebar.css';
 
 export const Sidebar: Component = () => {
-  const [trashExpanded, setTrashExpanded] = createSignal(false);
+  const searchQuery = () => notesStore.searchQuery;
 
   const scratchPad = createMemo(() => notesStore.scratchPad);
-  const starredNotes = createMemo(() => notesStore.starredNotes);
-  const activeNotes = createMemo(() =>
-    notesStore.filteredNotes.sort((a, b) => b.updatedAt - a.updatedAt)
-  );
+
+  // Filter starred notes by search query
+  const starredNotes = createMemo(() => {
+    const query = searchQuery().toLowerCase();
+    const starred = notesStore.starredNotes;
+    if (!query) return starred;
+    return starred.filter((n) => n.title.toLowerCase().includes(query));
+  });
+
+  // Get non-starred active notes, filtered by search query
+  const activeNotes = createMemo(() => {
+    const query = searchQuery().toLowerCase();
+    // Exclude starred notes from "All Notes" section
+    const nonStarred = notesStore.activeNotes.filter((n) => !n.starred);
+    const filtered = query
+      ? nonStarred.filter((n) => n.title.toLowerCase().includes(query))
+      : nonStarred;
+    return filtered.sort((a, b) => b.updatedAt - a.updatedAt);
+  });
+
+  // Combined matching notes for Enter key handling
+  const allMatchingNotes = createMemo(() => {
+    return [...starredNotes(), ...activeNotes()];
+  });
+
   const trashedNotes = createMemo(() => notesStore.trashedNotes);
 
   const handleNewNote = async () => {
     await createNote();
+  };
+
+  // Handle Enter in search: if exactly one match, select it and focus editor
+  const handleSearchEnter = () => {
+    const matches = allMatchingNotes();
+    if (matches.length === 1) {
+      const note = matches[0];
+      selectNote(note.id);
+      setSearchQuery('');
+      // Small delay to allow the editor to load the new note
+      setTimeout(() => {
+        focusEditorStart();
+      }, 100);
+    }
   };
 
   return (
@@ -34,6 +74,7 @@ export const Sidebar: Component = () => {
           value={notesStore.searchQuery}
           onInput={(value) => setSearchQuery(value)}
           placeholder="Search notes..."
+          onEnter={handleSearchEnter}
         />
         <button class="new-note-btn" onClick={handleNewNote} aria-label="New note">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -82,6 +123,7 @@ export const Sidebar: Component = () => {
                     onSelect={() => selectNote(note.id)}
                     onToggleStar={() => toggleNoteStarred(note.id)}
                     onDelete={() => deleteNote(note.id)}
+                    searchQuery={searchQuery()}
                   />
                 )}
               </For>
@@ -90,44 +132,53 @@ export const Sidebar: Component = () => {
         </Show>
 
         <section class="sidebar-section">
-          <h3 class="section-title">All Notes</h3>
-          <div class="note-list">
-            <Show
-              when={activeNotes().length > 0}
-              fallback={
-                <div class="empty-list">
-                  <p>No notes yet</p>
-                  <button class="create-first-btn" onClick={handleNewNote}>
-                    Create your first note
-                  </button>
-                </div>
-              }
-            >
-              <For each={activeNotes()}>
-                {(note) => (
-                  <NoteItem
-                    note={note}
-                    isSelected={note.id === notesStore.selectedNoteId}
-                    onSelect={() => selectNote(note.id)}
-                    onToggleStar={() => toggleNoteStarred(note.id)}
-                    onDelete={() => deleteNote(note.id)}
-                  />
-                )}
-              </For>
-            </Show>
-          </div>
+          <button
+            class="section-title section-title-collapsible"
+            onClick={() => setAllNotesExpanded(!settingsStore.allNotesExpanded)}
+          >
+            <span>All Notes</span>
+            <span class="section-toggle">{settingsStore.allNotesExpanded ? '−' : '+'}</span>
+          </button>
+          <Show when={settingsStore.allNotesExpanded}>
+            <div class="note-list">
+              <Show
+                when={activeNotes().length > 0}
+                fallback={
+                  <div class="empty-list">
+                    <p>No notes yet</p>
+                    <button class="create-first-btn" onClick={handleNewNote}>
+                      Create your first note
+                    </button>
+                  </div>
+                }
+              >
+                <For each={activeNotes()}>
+                  {(note) => (
+                    <NoteItem
+                      note={note}
+                      isSelected={note.id === notesStore.selectedNoteId}
+                      onSelect={() => selectNote(note.id)}
+                      onToggleStar={() => toggleNoteStarred(note.id)}
+                      onDelete={() => deleteNote(note.id)}
+                      searchQuery={searchQuery()}
+                    />
+                  )}
+                </For>
+              </Show>
+            </div>
+          </Show>
         </section>
 
         <Show when={trashedNotes().length > 0}>
           <section class="sidebar-section">
             <button
               class="section-title section-title-collapsible"
-              onClick={() => setTrashExpanded(!trashExpanded())}
+              onClick={() => setTrashExpanded(!settingsStore.trashExpanded)}
             >
               <span>Trash</span>
-              <span class="section-toggle">{trashExpanded() ? '−' : '+'}</span>
+              <span class="section-toggle">{settingsStore.trashExpanded ? '−' : '+'}</span>
             </button>
-            <Show when={trashExpanded()}>
+            <Show when={settingsStore.trashExpanded}>
               <div class="note-list">
                 <For each={trashedNotes()}>
                   {(note) => (
