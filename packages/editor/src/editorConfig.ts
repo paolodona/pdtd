@@ -235,9 +235,10 @@ export const editorStyles = `
 
   .drag-handle {
     position: absolute;
-    left: -20px;
-    width: 16px;
-    height: 16px;
+    left: -4px;
+    transform: translateX(-100%);
+    width: 14px;
+    height: 14px;
     display: flex;
     align-items: center;
     justify-content: center;

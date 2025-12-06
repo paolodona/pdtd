@@ -52,17 +52,21 @@ function getBlockAtPos(doc: ProseMirrorNode, pos: number): { node: ProseMirrorNo
 }
 
 /**
- * Find block at Y coordinate by using posAtCoords with the editor's center X
+ * Find block at Y coordinate by using posAtCoords
  */
-function findBlockAtY(view: EditorView, y: number): { node: ProseMirrorNode; pos: number } | null {
-  // Get the editor's bounding rect to find a valid X coordinate inside the content
+function findBlockAtY(view: EditorView, x: number, y: number): { node: ProseMirrorNode; pos: number } | null {
   const editorRect = view.dom.getBoundingClientRect();
 
-  // Use a point inside the editor content area (center X, mouse Y)
-  const centerX = editorRect.left + editorRect.width / 2;
+  // Use the actual X if within editor bounds, otherwise use left edge + offset
+  let useX = x;
+  if (x < editorRect.left) {
+    useX = editorRect.left + 30; // Just inside the left edge
+  } else if (x > editorRect.right) {
+    useX = editorRect.right - 10;
+  }
 
   // Try to get position at this coordinate
-  const pos = view.posAtCoords({ left: centerX, top: y });
+  const pos = view.posAtCoords({ left: useX, top: y });
   if (!pos) return null;
 
   // Use the existing getBlockAtPos function to find the block
@@ -240,9 +244,9 @@ export const DragHandle = Extension.create({
                 }
               }
 
-              // Find block by Y coordinate - this allows the handle to stay visible
-              // when moving horizontally toward it
-              const block = findBlockAtY(view, event.clientY);
+              // Find block at mouse position - uses actual X when in editor,
+              // falls back to left edge when mouse is in the drag handle area
+              const block = findBlockAtY(view, event.clientX, event.clientY);
 
               if (block && state?.hoveredPos !== block.pos) {
                 view.dispatch(
