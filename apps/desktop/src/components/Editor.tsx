@@ -86,6 +86,8 @@ export const Editor: Component<EditorProps> = (props) => {
   const [title, setTitle] = createSignal('');
   const [isSaving, setIsSaving] = createSignal(false);
   const [isLoading, setIsLoading] = createSignal(false);
+  // Signal to trigger toolbar re-renders when editor state changes (selection, formatting)
+  const [editorStateVersion, setEditorStateVersion] = createSignal(0);
 
   // Get the last updated timestamp from the note
   const lastUpdated = createMemo(() => {
@@ -173,6 +175,13 @@ export const Editor: Component<EditorProps> = (props) => {
           }
           return false;
         },
+      },
+      // Update toolbar state when selection or content changes
+      onSelectionUpdate: () => {
+        setEditorStateVersion((v) => v + 1);
+      },
+      onTransaction: () => {
+        setEditorStateVersion((v) => v + 1);
       },
     });
 
@@ -274,7 +283,7 @@ export const Editor: Component<EditorProps> = (props) => {
   return (
     <div class="editor">
       <div class="editor-header">
-        <EditorToolbar editor={editor} />
+        <EditorToolbar editor={editor} editorStateVersion={editorStateVersion} />
         <div class="editor-header-row">
           <div class="editor-title-container">
             <input
@@ -303,12 +312,17 @@ export const Editor: Component<EditorProps> = (props) => {
 
 interface EditorToolbarProps {
   editor: Accessor<TipTapEditor | undefined>;
+  editorStateVersion: Accessor<number>;
 }
 
 const EditorToolbar: Component<EditorToolbarProps> = (props) => {
   const getEditor = () => props.editor();
 
+  // isActive depends on editorStateVersion to make it reactive
+  // When editorStateVersion changes, Solid re-evaluates classList bindings
   const isActive = (name: string, attrs?: Record<string, unknown>) => {
+    // Read the signal to create a reactive dependency
+    props.editorStateVersion();
     return getEditor()?.isActive(name, attrs) ?? false;
   };
 
