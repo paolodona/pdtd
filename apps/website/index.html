@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PDTodo - A lightning-fast, minimalist note-taking app that syncs instantly across all your devices.">
+    <meta name="keywords" content="notes, note-taking, productivity, sync, minimalist, offline">
+    <meta property="og:title" content="PDTodo - Notes that just work">
+    <meta property="og:description" content="Lightning-fast, minimalist note-taking. Syncs instantly across all your devices.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://pdtodo.com">
+    <title>PDTodo - Notes that just work</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <span class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="3" width="18" height="18" rx="4" stroke="currentColor" stroke-width="2"/>
+                        <path d="M8 12L11 15L16 9" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </span>
+                PDTodo
+            </a>
+            <div class="nav-links">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#download" class="nav-link">Download</a>
+                <a href="https://web.pdtodo.com" class="nav-link nav-link-cta" target="_blank" rel="noopener">Open Web App</a>
+            </div>
+            <button class="nav-mobile-toggle" aria-label="Toggle menu">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu">
+        <a href="#features" class="mobile-menu-link">Features</a>
+        <a href="#download" class="mobile-menu-link">Download</a>
+        <a href="https://web.pdtodo.com" class="mobile-menu-link" target="_blank" rel="noopener">Open Web App</a>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1 class="hero-title">Notes that<br><span class="hero-title-accent">just work.</span></h1>
+                <p class="hero-subtitle">
+                    A lightning-fast, minimalist note-taking app.
+                    Use it on all your devices. Your notes stay in sync, always.
+                </p>
+                <div class="hero-cta">
+                    <a href="#download" class="btn btn-primary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 15V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M12 3V15M12 15L7 10M12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Download for Free
+                    </a>
+                    <a href="https://web.pdtodo.com" class="btn btn-secondary" target="_blank" rel="noopener">
+                        Try in Browser
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </a>
+                </div>
+                <p class="hero-platforms">Available for Windows, Web, and Android (coming soon)</p>
+            </div>
+            <div class="hero-visual">
+                <div class="app-preview">
+                    <div class="app-preview-header">
+                        <div class="app-preview-dots">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <span class="app-preview-title">PDTodo</span>
+                    </div>
+                    <div class="app-preview-content">
+                        <div class="app-preview-sidebar">
+                            <div class="preview-item preview-item-active">
+                                <span class="preview-icon">&#9997;</span>
+                                Scratch Pad
+                            </div>
+                            <div class="preview-section">Shortcuts</div>
+                            <div class="preview-item">
+                                <span class="preview-star">&#9733;</span>
+                                Project Ideas
+                            </div>
+                            <div class="preview-item">
+                                <span class="preview-star">&#9733;</span>
+                                Weekly Goals
+                            </div>
+                            <div class="preview-section">All Notes</div>
+                            <div class="preview-item">Meeting Notes</div>
+                            <div class="preview-item">Shopping List</div>
+                        </div>
+                        <div class="app-preview-main">
+                            <div class="preview-note-title">Today's Tasks</div>
+                            <div class="preview-checklist">
+                                <div class="preview-check checked">
+                                    <span class="checkbox">&#10003;</span>
+                                    Review project proposal
+                                </div>
+                                <div class="preview-check checked">
+                                    <span class="checkbox">&#10003;</span>
+                                    Send weekly update
+                                </div>
+                                <div class="preview-check">
+                                    <span class="checkbox empty"></span>
+                                    Plan next sprint
+                                </div>
+                                <div class="preview-check">
+                                    <span class="checkbox empty"></span>
+                                    Call with team
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2 class="section-title">Why PDTodo?</h2>
+            <p class="section-subtitle">
+                We believe note-taking should be simple. No complicated features,
+                no learning curve. Just you and your thoughts.
+            </p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">Lightning Fast</h3>
+                    <p class="feature-description">
+                        Opens in a blink. No loading screens, no waiting.
+                        Start typing the moment you need to capture a thought.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 6V12L16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">Instant Sync</h3>
+                    <p class="feature-description">
+                        Write a note on your computer, see it on your phone seconds later.
+                        No manual saving, no conflicts. It just works.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="5" y="2" width="14" height="20" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 18H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">All Your Devices</h3>
+                    <p class="feature-description">
+                        Use PDTodo on as many devices as you want.
+                        Your computer, your phone, your tablet. All included, no extra cost.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">Works Offline</h3>
+                    <p class="feature-description">
+                        No internet? No problem. Your notes are always available.
+                        Everything syncs automatically when you're back online.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 6H20M4 12H20M4 18H12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">Minimalist Design</h3>
+                    <p class="feature-description">
+                        A calm, distraction-free space for your thoughts.
+                        No clutter, no overwhelming features. Just what you need.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="3" y="3" width="18" height="18" rx="4" stroke="currentColor" stroke-width="2"/>
+                            <path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">Simple Checklists</h3>
+                    <p class="feature-description">
+                        Turn any line into a task with a click.
+                        Perfect for to-do lists, shopping lists, or project tracking.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Social Proof / Quote Section -->
+    <section class="quote-section">
+        <div class="container">
+            <blockquote class="quote">
+                "The best note app is the one that gets out of your way."
+            </blockquote>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section class="download" id="download">
+        <div class="container">
+            <h2 class="section-title">Get PDTodo</h2>
+            <p class="section-subtitle">
+                Free to use. Download the app or use it directly in your browser.
+            </p>
+
+            <div class="download-grid">
+                <a href="#" class="download-card download-card-primary">
+                    <div class="download-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 5.5L10.5 4V11.5H3V5.5Z" fill="currentColor"/>
+                            <path d="M3 12.5H10.5V20L3 18.5V12.5Z" fill="currentColor"/>
+                            <path d="M11.5 3.8L21 2.5V11.5H11.5V3.8Z" fill="currentColor"/>
+                            <path d="M11.5 12.5H21V21.5L11.5 20.2V12.5Z" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <h3 class="download-title">Windows</h3>
+                    <p class="download-subtitle">Download for Windows 10/11</p>
+                    <span class="download-badge">Recommended</span>
+                </a>
+
+                <a href="https://web.pdtodo.com" class="download-card" target="_blank" rel="noopener">
+                    <div class="download-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                            <path d="M2 12H22" stroke="currentColor" stroke-width="2"/>
+                            <ellipse cx="12" cy="12" rx="4" ry="10" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <h3 class="download-title">Web</h3>
+                    <p class="download-subtitle">Use in any browser</p>
+                </a>
+
+                <div class="download-card download-card-coming-soon">
+                    <div class="download-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="5" y="2" width="14" height="20" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 18H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <h3 class="download-title">Android</h3>
+                    <p class="download-subtitle">Coming soon</p>
+                    <span class="download-badge download-badge-soon">In Development</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="final-cta">
+        <div class="container">
+            <h2 class="final-cta-title">Ready to simplify your notes?</h2>
+            <p class="final-cta-subtitle">Join thousands of people who have already made the switch.</p>
+            <a href="#download" class="btn btn-primary btn-large">Get Started for Free</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <span class="footer-logo">PDTodo</span>
+                    <p class="footer-tagline">Notes that just work.</p>
+                </div>
+                <div class="footer-links">
+                    <a href="#features">Features</a>
+                    <a href="#download">Download</a>
+                    <a href="https://web.pdtodo.com" target="_blank" rel="noopener">Web App</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 PDTodo. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        const mobileToggle = document.querySelector('.nav-mobile-toggle');
+        const mobileMenu = document.querySelector('.mobile-menu');
+
+        mobileToggle.addEventListener('click', () => {
+            mobileMenu.classList.toggle('active');
+            mobileToggle.classList.toggle('active');
+        });
+
+        // Close mobile menu when clicking a link
+        document.querySelectorAll('.mobile-menu-link').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.remove('active');
+                mobileToggle.classList.remove('active');
+            });
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
