@@ -358,16 +358,18 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
     const { state } = ed.view;
     let tr = state.tr;
 
-    // Structure to hold info about checked items
+    // Structure to hold info about checked items with their depth for sorting
     interface CheckedItemInfo {
       pos: number;
       nodeSize: number;
+      depth: number;
       uncheckedChildNodes: ProseMirrorNode[];
     }
 
     const checkedItems: CheckedItemInfo[] = [];
 
     // First pass: collect all checked items and their unchecked nested children
+    // Also track depth for proper ordering (process deepest first)
     state.doc.descendants((node, pos) => {
       if (node.type.name === 'taskItem' && node.attrs.checked === true) {
         const uncheckedChildNodes: ProseMirrorNode[] = [];
@@ -384,26 +386,45 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
           }
         });
 
+        // Calculate depth by resolving position
+        const $pos = state.doc.resolve(pos);
+        const depth = $pos.depth;
+
         checkedItems.push({
           pos,
           nodeSize: node.nodeSize,
+          depth,
           uncheckedChildNodes,
         });
       }
       return true;
     });
 
-    // Process in reverse order (from end to start) to maintain position validity
-    checkedItems.reverse();
+    // Sort by depth (deepest first), then by position (end first)
+    // This ensures we process nested items before their parents
+    checkedItems.sort((a, b) => {
+      if (b.depth !== a.depth) return b.depth - a.depth;
+      return b.pos - a.pos;
+    });
+
+    // Track which positions have been processed to avoid double-processing
+    const processedRanges: { from: number; to: number }[] = [];
 
     for (const item of checkedItems) {
+      // Skip if this item was already deleted as part of a parent
+      const originalFrom = item.pos;
+      const originalTo = item.pos + item.nodeSize;
+      const alreadyProcessed = processedRanges.some(
+        (range) => originalFrom >= range.from && originalTo <= range.to
+      );
+      if (alreadyProcessed) continue;
+
       // Map position through any previous changes
       const mappedPos = tr.mapping.map(item.pos);
       const mappedEnd = tr.mapping.map(item.pos + item.nodeSize);
 
       if (item.uncheckedChildNodes.length > 0) {
         // We need to insert unchecked children as siblings after this item
-        // First, find the parent taskList to insert into
         const $pos = tr.doc.resolve(mappedPos);
 
         // Find the taskList parent (should be immediate parent of taskItem)
@@ -428,29 +449,60 @@ const EditorToolbar: Component<EditorToolbarProps> = (props) => {
         }
       }
 
-      // Now delete the checked item (re-map position after potential inserts)
+      // Delete the checked item using deleteRange for more reliable deletion
       const deleteFrom = tr.mapping.map(item.pos);
       const deleteTo = tr.mapping.map(item.pos + item.nodeSize);
-      tr = tr.delete(deleteFrom, deleteTo);
+
+      // Use replaceWith to replace the node with nothing (more reliable than delete)
+      tr = tr.replaceWith(deleteFrom, deleteTo, []);
+
+      // Track this range as processed
+      processedRanges.push({ from: originalFrom, to: originalTo });
     }
 
-    // Clean up empty taskLists that might remain
-    let hasEmptyLists = true;
-    while (hasEmptyLists) {
-      hasEmptyLists = false;
-      const emptyLists: { from: number; to: number }[] = [];
+    // Clean up empty or effectively empty taskLists
+    // Run multiple passes until no more changes
+    let cleanupNeeded = true;
+    while (cleanupNeeded) {
+      cleanupNeeded = false;
+      const listsToRemove: { from: number; to: number }[] = [];
 
       tr.doc.descendants((node, pos) => {
-        if (node.type.name === 'taskList' && node.childCount === 0) {
-          emptyLists.push({ from: pos, to: pos + node.nodeSize });
-          hasEmptyLists = true;
+        if (node.type.name === 'taskList') {
+          // Check if the list is empty or only contains empty task items
+          let hasContent = false;
+          node.forEach((child) => {
+            if (child.type.name === 'taskItem') {
+              // Check if this taskItem has any real content
+              let itemHasContent = false;
+              child.forEach((grandchild) => {
+                if (grandchild.type.name === 'paragraph') {
+                  // Check if paragraph has text content
+                  if (grandchild.textContent.trim().length > 0) {
+                    itemHasContent = true;
+                  }
+                } else if (grandchild.type.name === 'taskList') {
+                  // Has nested list, consider it as having content
+                  itemHasContent = true;
+                }
+              });
+              if (itemHasContent) {
+                hasContent = true;
+              }
+            }
+          });
+
+          if (!hasContent) {
+            listsToRemove.push({ from: pos, to: pos + node.nodeSize });
+            cleanupNeeded = true;
+          }
         }
         return true;
       });
 
       // Delete empty lists in reverse order
-      emptyLists.reverse().forEach(({ from, to }) => {
-        tr = tr.delete(from, to);
+      listsToRemove.reverse().forEach(({ from, to }) => {
+        tr = tr.replaceWith(from, to, []);
       });
     }
 
