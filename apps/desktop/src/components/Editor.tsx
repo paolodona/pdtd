@@ -84,6 +84,7 @@ export const Editor: Component<EditorProps> = (props) => {
   let editorRef: HTMLDivElement | undefined;
   let ydoc: Y.Doc | undefined;
   let updateHandler: (() => void) | undefined;
+  let tooltipHideTimeout: ReturnType<typeof setTimeout> | undefined;
 
   const [editor, setEditor] = createSignal<TipTapEditor | undefined>(undefined);
   const [title, setTitle] = createSignal('');
@@ -99,6 +100,22 @@ export const Editor: Component<EditorProps> = (props) => {
     x: number;
     y: number;
   }>({ visible: false, url: '', x: 0, y: 0 });
+
+  // Helper to schedule tooltip hide with delay
+  const scheduleTooltipHide = () => {
+    if (tooltipHideTimeout) clearTimeout(tooltipHideTimeout);
+    tooltipHideTimeout = setTimeout(() => {
+      setLinkTooltip((prev) => ({ ...prev, visible: false }));
+    }, 150); // Small delay to allow moving to tooltip
+  };
+
+  // Helper to cancel scheduled hide
+  const cancelTooltipHide = () => {
+    if (tooltipHideTimeout) {
+      clearTimeout(tooltipHideTimeout);
+      tooltipHideTimeout = undefined;
+    }
+  };
 
   // Get the last updated timestamp from the note
   const lastUpdated = createMemo(() => {
@@ -284,12 +301,13 @@ export const Editor: Component<EditorProps> = (props) => {
     const link = target.closest('a');
 
     if (link && link.href) {
+      // Cancel any pending hide when hovering a link
+      cancelTooltipHide();
+
       // Position tooltip above the link
       const rect = link.getBoundingClientRect();
-      const editorBody = editorRef?.closest('.editor-body');
-      const editorBodyRect = editorBody?.getBoundingClientRect();
 
-      // Calculate position relative to viewport, then adjust for scroll
+      // Calculate position relative to viewport
       const x = rect.left;
       const y = rect.top - 8; // Position above the link with small gap
 
@@ -300,21 +318,24 @@ export const Editor: Component<EditorProps> = (props) => {
         y,
       });
     } else {
-      // Only hide if we're not hovering over the tooltip itself
-      const tooltip = document.querySelector('.link-tooltip');
-      if (!tooltip?.contains(e.relatedTarget as Node)) {
-        setLinkTooltip((prev) => ({ ...prev, visible: false }));
-      }
+      // Schedule hide with delay when not hovering a link
+      scheduleTooltipHide();
     }
   };
 
   // Handle mouse leave from editor
-  const handleEditorMouseLeave = (e: MouseEvent) => {
-    // Check if we're moving to the tooltip
-    const tooltip = document.querySelector('.link-tooltip');
-    if (tooltip?.contains(e.relatedTarget as Node)) {
-      return; // Don't hide if moving to tooltip
-    }
+  const handleEditorMouseLeave = () => {
+    // Schedule hide with delay to allow moving to tooltip
+    scheduleTooltipHide();
+  };
+
+  // Handle mouse enter on tooltip (cancel hide)
+  const handleTooltipMouseEnter = () => {
+    cancelTooltipHide();
+  };
+
+  // Handle mouse leave from tooltip
+  const handleTooltipMouseLeave = () => {
     setLinkTooltip((prev) => ({ ...prev, visible: false }));
   };
 
@@ -329,6 +350,9 @@ export const Editor: Component<EditorProps> = (props) => {
 
   // Cleanup - save content before destroying
   onCleanup(async () => {
+    // Clear tooltip timeout
+    cancelTooltipHide();
+
     // Flush any pending saves
     await flushPendingTitleUpdate();
     await flushPendingContentSave();
@@ -383,7 +407,8 @@ export const Editor: Component<EditorProps> = (props) => {
             top: `${linkTooltip().y}px`,
             transform: 'translateY(-100%)',
           }}
-          onMouseLeave={() => setLinkTooltip((prev) => ({ ...prev, visible: false }))}
+          onMouseEnter={handleTooltipMouseEnter}
+          onMouseLeave={handleTooltipMouseLeave}
         >
           <button
             class="link-tooltip-btn"
