@@ -52,43 +52,24 @@ function getBlockAtPos(doc: ProseMirrorNode, pos: number): { node: ProseMirrorNo
 }
 
 /**
- * Find block at Y coordinate by scanning through document blocks
+ * Find block at Y coordinate by using posAtCoords with the editor's center X
  */
 function findBlockAtY(view: EditorView, y: number): { node: ProseMirrorNode; pos: number } | null {
-  const doc = view.state.doc;
-  let foundBlock: { node: ProseMirrorNode; pos: number } | null = null;
+  // Get the editor's bounding rect to find a valid X coordinate inside the content
+  const editorRect = view.dom.getBoundingClientRect();
 
-  doc.descendants((node, pos) => {
-    // Only check top-level blocks or list items
-    const $pos = doc.resolve(pos);
-    const parent = $pos.parent;
+  // Use a point inside the editor content area (center X, mouse Y)
+  const centerX = editorRect.left + editorRect.width / 2;
 
-    const isTopLevel = $pos.depth === 0;
-    const isListItem = parent.type.name === 'bulletList' ||
-                       parent.type.name === 'orderedList' ||
-                       parent.type.name === 'taskList';
+  // Try to get position at this coordinate
+  const pos = view.posAtCoords({ left: centerX, top: y });
+  if (!pos) return null;
 
-    if (!isTopLevel && !isListItem) {
-      return true; // Continue descending
-    }
+  // Use the existing getBlockAtPos function to find the block
+  const block = getBlockAtPos(view.state.doc, pos.pos);
+  if (!block) return null;
 
-    try {
-      const coords = view.coordsAtPos(pos);
-      const endCoords = view.coordsAtPos(pos + node.nodeSize);
-
-      // Check if Y is within this block's vertical bounds
-      if (y >= coords.top && y <= endCoords.bottom) {
-        foundBlock = { node, pos };
-        return false; // Stop iteration
-      }
-    } catch {
-      // Position might be invalid, continue
-    }
-
-    return true;
-  });
-
-  return foundBlock;
+  return { node: block.node, pos: block.pos };
 }
 
 /**
