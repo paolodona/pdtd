@@ -8,6 +8,7 @@ import { registerEditorFocus, unregisterEditorFocus } from '../stores/focusStore
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-shell';
 import * as Y from 'yjs';
+import { ySyncPluginKey } from 'y-prosemirror';
 import type { Note } from '@pdtodo/types';
 import './Editor.css';
 
@@ -283,9 +284,12 @@ export const Editor: Component<EditorProps> = (props) => {
       }
 
       // Create UndoManager for this document's content
+      // Must track ySyncPluginKey origin to capture changes from ProseMirror
       const xmlFragment = ydoc.getXmlFragment('content');
-      const newUndoManager = new Y.UndoManager(xmlFragment);
-      console.log('Created UndoManager for note:', noteId, 'xmlFragment:', xmlFragment);
+      const newUndoManager = new Y.UndoManager(xmlFragment, {
+        trackedOrigins: new Set([ySyncPluginKey]),
+      });
+      console.log('Created UndoManager for note:', noteId, 'trackedOrigins:', ySyncPluginKey);
       setUndoManager(newUndoManager);
 
       // Initialize editor with the Yjs document
